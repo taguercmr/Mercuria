@@ -6,21 +6,42 @@ use App\Http\Controllers\Controller;
 use App\Models\MercurialeArticle;
 use App\Models\MercurialeRubrique;
 use App\Services\Mercuriale\MercurialeSearchService;
+use App\Services\Mercuriale\MercurialeYearService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MercurialeApiController extends Controller
 {
-    public function rubriques()
+    public function rubriques(Request $request, MercurialeYearService $years)
     {
+        $year = $years->resolve($request->integer('year') ?: null);
+
+        $counts = MercurialeArticle::query()
+            ->select('rubrique_id', DB::raw('COUNT(*) as aggregate'))
+            ->where('budget_year', $year)
+            ->groupBy('rubrique_id')
+            ->pluck('aggregate', 'rubrique_id');
+
+        $data = MercurialeRubrique::query()
+            ->orderBy('code')
+            ->get(['id', 'code', 'name'])
+            ->map(fn (MercurialeRubrique $rubrique) => [
+                'code' => $rubrique->code,
+                'name' => $rubrique->name,
+                'articles_count' => (int) ($counts[$rubrique->id] ?? 0),
+            ])
+            ->filter(fn (array $row) => $row['articles_count'] > 0)
+            ->values();
+
         return response()->json([
-            'data' => MercurialeRubrique::query()
-                ->orderBy('code')
-                ->get(['code', 'name', 'articles_count']),
+            'data' => $data,
+            'meta' => ['budget_year' => $year],
         ]);
     }
 
-    public function articles(Request $request, MercurialeSearchService $search)
+    public function articles(Request $request, MercurialeSearchService $search, MercurialeYearService $years)
     {
+        $year = $years->resolve($request->integer('year') ?: null);
         $q = trim((string) $request->get('q', ''));
         $rubrique = $request->get('rubrique');
         $perPage = min((int) $request->get('per_page', 50), 100);
@@ -29,6 +50,7 @@ class MercurialeApiController extends Controller
             'q' => $q,
             'rubrique' => $rubrique,
             'per_page' => $perPage,
+            'year' => $year,
         ]);
 
         return response()->json([
@@ -49,15 +71,19 @@ class MercurialeApiController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'search_driver' => $search->driver(),
+                'budget_year' => $year,
             ],
         ]);
     }
 
-    public function show(string $reference)
+    public function show(string $reference, Request $request, MercurialeYearService $years)
     {
+        $year = $years->resolve($request->integer('year') ?: null);
+
         $article = MercurialeArticle::query()
             ->with(['rubrique:id,code,name', 'famille:id,code,name'])
             ->where('reference', $reference)
+            ->where('budget_year', $year)
             ->firstOrFail();
 
         return response()->json([
@@ -73,6 +99,7 @@ class MercurialeApiController extends Controller
                 'rubrique' => $article->rubrique?->only(['code', 'name']),
                 'famille' => $article->famille?->only(['code', 'name']),
             ],
+            'meta' => ['budget_year' => $year],
         ]);
     }
 }

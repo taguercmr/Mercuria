@@ -19,11 +19,14 @@ class DocumentTemplateController extends Controller
                 ->latest()
                 ->get(),
             'types' => Document::TYPES,
+            'designs' => config('documents.designs'),
         ]);
     }
 
     public function storeFromDocument(Request $request, Document $document): RedirectResponse
     {
+        $this->authorize('view', $document);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
         ]);
@@ -39,6 +42,9 @@ class DocumentTemplateController extends Controller
             'notes' => $document->notes,
             'terms' => $document->terms,
             'tax_rate' => $document->tax_rate,
+            'ir_rate' => $document->ir_rate,
+            'ir_mode' => $document->ir_mode,
+            'design' => $document->design,
             'lines' => $document->lines->map(fn ($l) => [
                 'mercuriale_article_id' => $l->mercuriale_article_id,
                 'reference' => $l->reference,

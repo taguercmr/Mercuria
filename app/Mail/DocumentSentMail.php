@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -20,6 +21,7 @@ class DocumentSentMail extends Mailable
         public Document $document,
         public Tenant $tenant,
         public ?string $customMessage = null,
+        public ?string $replyToEmail = null,
     ) {}
 
     public function envelope(): Envelope
@@ -28,6 +30,10 @@ class DocumentSentMail extends Mailable
         $number = $this->document->number ?: '#'.$this->document->id;
 
         return new Envelope(
+            from: new Address(config('mail.from.address'), $this->tenant->name.' via Mercuria'),
+            replyTo: ($email = $this->tenant->email ?: $this->replyToEmail)
+                ? [new Address($email, $this->tenant->name)]
+                : [],
             subject: "{$label} {$number} — {$this->tenant->name}",
         );
     }

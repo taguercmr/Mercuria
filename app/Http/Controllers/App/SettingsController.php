@@ -14,12 +14,23 @@ class SettingsController extends Controller
     public function edit(Request $request): Response
     {
         $tenant = $request->user()->currentTenant;
+        $canWrite = $request->user()->is_platform_admin
+            || in_array($request->user()->tenantRole(), ['owner', 'editor'], true);
 
         return Inertia::render('App/Settings/Index', [
-            'tenant' => $tenant?->only([
-                'id', 'name', 'email', 'phone', 'currency', 'logo_path',
-                'letterhead', 'footer_text', 'signature_path', 'plan',
-            ]),
+            'tenant' => $tenant ? [
+                ...$tenant->only([
+                    'id', 'name', 'email', 'phone', 'currency', 'logo_path',
+                    'letterhead', 'footer_text', 'signature_path', 'plan',
+                ]),
+                'logo_url' => $tenant->logo_path
+                    ? Storage::disk('public')->url($tenant->logo_path)
+                    : null,
+                'signature_url' => $tenant->signature_path
+                    ? Storage::disk('public')->url($tenant->signature_path)
+                    : null,
+            ] : null,
+            'canWrite' => $canWrite,
         ]);
     }
 
@@ -56,6 +67,6 @@ class SettingsController extends Controller
         unset($data['logo'], $data['signature']);
         $tenant->update($data);
 
-        return back()->with('success', 'Paramètres enregistrés.');
+        return back()->with('success', 'Personnalisation enregistrée.');
     }
 }

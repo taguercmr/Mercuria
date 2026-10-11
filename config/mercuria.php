@@ -4,8 +4,8 @@ return [
 
     'name' => env('APP_NAME', 'Mercuria'),
 
-    'mercuriale_year' => 2026,
-    'mercuriale_source' => 'MINCOMMERCE / DMQP — SYGEP Budget 2026',
+    'mercuriale_year' => (int) env('MERCURIA_YEAR', 2026),
+    'mercuriale_source' => 'MINCOMMERCE / DMQP — SYGEP Budget',
 
     /*
     |--------------------------------------------------------------------------
@@ -28,8 +28,8 @@ return [
             'clients_limit' => null,
             'api_access' => true,
             'team_members' => (int) env('MERCURIA_PRO_TEAM_MEMBERS', 10),
-            'price_monthly_xaf' => (int) env('MERCURIA_PRO_PRICE_MONTHLY', 15000),
-            'price_yearly_xaf' => (int) env('MERCURIA_PRO_PRICE_YEARLY', 150000),
+            'price_monthly_xaf' => (int) env('MERCURIA_PRO_PRICE_MONTHLY', 9900),
+            'price_yearly_xaf' => (int) env('MERCURIA_PRO_PRICE_YEARLY', 99000),
         ],
     ],
 

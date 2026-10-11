@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments\Adapters;
 
+use App\Services\Payments\PaymentConfig;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\Payments\PaymentInitiationResult;
 use App\Services\Payments\PaymentRequest;
@@ -12,6 +13,8 @@ use RuntimeException;
 
 class CinetPayAdapter implements PaymentGatewayInterface
 {
+    public function __construct(private readonly PaymentConfig $config) {}
+
     public function name(): string
     {
         return 'cinetpay';
@@ -20,8 +23,8 @@ class CinetPayAdapter implements PaymentGatewayInterface
     public function initiate(PaymentRequest $request): PaymentInitiationResult
     {
         $payload = [
-            'apikey' => config('payments.cinetpay.apikey'),
-            'site_id' => config('payments.cinetpay.site_id'),
+            'apikey' => $this->config->get('cinetpay', 'apikey'),
+            'site_id' => $this->config->get('cinetpay', 'site_id'),
             'transaction_id' => $request->externalId,
             'amount' => $this->normalizeAmount($request->amount),
             'currency' => $request->currency,
@@ -35,7 +38,10 @@ class CinetPayAdapter implements PaymentGatewayInterface
             'customer_phone_number' => $request->customerPhone,
         ];
 
-        $response = Http::acceptJson()->post($this->baseUrl().'/payment', $payload);
+        $response = Http::connectTimeout(5)
+            ->timeout(20)
+            ->acceptJson()
+            ->post($this->baseUrl().'/payment', $payload);
 
         if (! $response->successful()) {
             throw new RuntimeException('CinetPay payment init failed: '.$response->body());
@@ -46,7 +52,7 @@ class CinetPayAdapter implements PaymentGatewayInterface
 
         return new PaymentInitiationResult(
             provider: $this->name(),
-            providerTransId: (string) ($paymentData['payment_token'] ?? $request->externalId),
+            providerTransId: $request->externalId,
             checkoutUrl: (string) ($paymentData['payment_url'] ?? ''),
             raw: is_array($data) ? $data : [],
         );
@@ -54,11 +60,14 @@ class CinetPayAdapter implements PaymentGatewayInterface
 
     public function checkStatus(string $providerTransId): PaymentStatusResult
     {
-        $response = Http::acceptJson()->post($this->baseUrl().'/payment/check', [
-            'apikey' => config('payments.cinetpay.apikey'),
-            'site_id' => config('payments.cinetpay.site_id'),
-            'transaction_id' => $providerTransId,
-        ]);
+        $response = Http::connectTimeout(5)
+            ->timeout(15)
+            ->acceptJson()
+            ->post($this->baseUrl().'/payment/check', [
+                'apikey' => $this->config->get('cinetpay', 'apikey'),
+                'site_id' => $this->config->get('cinetpay', 'site_id'),
+                'transaction_id' => $providerTransId,
+            ]);
 
         if (! $response->successful()) {
             throw new RuntimeException('CinetPay payment check failed: '.$response->body());
@@ -99,6 +108,6 @@ class CinetPayAdapter implements PaymentGatewayInterface
 
     private function baseUrl(): string
     {
-        return rtrim((string) config('payments.cinetpay.base_url'), '/');
+        return rtrim((string) $this->config->get('cinetpay', 'base_url', 'https://api-checkout.cinetpay.com/v2'), '/');
     }
 }

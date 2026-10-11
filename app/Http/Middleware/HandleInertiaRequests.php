@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Mercuriale\MercurialeYearService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -65,7 +66,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'app' => [
                 'name' => config('mercuria.name', config('app.name')),
-                'mercurialeYear' => config('mercuria.mercuriale_year'),
+                'mercurialeYear' => app(MercurialeYearService::class)->active(),
+                'mercurialeYears' => app(MercurialeYearService::class)->available(),
             ],
         ];
     }

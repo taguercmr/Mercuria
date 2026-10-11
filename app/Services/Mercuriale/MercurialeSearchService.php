@@ -31,7 +31,7 @@ class MercurialeSearchService
     }
 
     /**
-     * @param  array{q?: string, rubrique?: string|null, favorites?: array<int>|null, per_page?: int}  $filters
+     * @param  array{q?: string, rubrique?: string|null, favorites?: array<int>|null, per_page?: int, year?: int|null}  $filters
      */
     public function paginate(array $filters): LengthAwarePaginator
     {
@@ -39,16 +39,17 @@ class MercurialeSearchService
         $rubrique = $filters['rubrique'] ?? null;
         $favoriteIds = $filters['favorites'] ?? null;
         $perPage = (int) ($filters['per_page'] ?? 30);
+        $year = isset($filters['year']) ? (int) $filters['year'] : null;
 
         if ($q !== '' && $this->driver() === 'meilisearch') {
             try {
-                return $this->paginateViaScout($q, $rubrique, $favoriteIds, $perPage);
+                return $this->paginateViaScout($q, $rubrique, $favoriteIds, $perPage, $year);
             } catch (Throwable $e) {
                 report($e);
             }
         }
 
-        return $this->paginateViaSql($q, $rubrique, $favoriteIds, $perPage);
+        return $this->paginateViaSql($q, $rubrique, $favoriteIds, $perPage, $year);
     }
 
     /**
@@ -59,6 +60,7 @@ class MercurialeSearchService
         ?string $rubrique,
         ?array $favoriteIds,
         int $perPage,
+        ?int $year = null,
     ): LengthAwarePaginator {
         $builder = MercurialeArticle::search($q);
 
@@ -66,11 +68,13 @@ class MercurialeSearchService
             $builder->where('rubrique_code', $rubrique);
         }
 
+        if ($year) {
+            $builder->where('budget_year', $year);
+        }
+
         if (is_array($favoriteIds)) {
             if ($favoriteIds === []) {
                 $builder->where('id', 0);
-            } else {
-                // Scout whereIn support varies; filter after hydrate for favorites
             }
         }
 
@@ -95,9 +99,14 @@ class MercurialeSearchService
         ?string $rubrique,
         ?array $favoriteIds,
         int $perPage,
+        ?int $year = null,
     ): LengthAwarePaginator {
         $query = MercurialeArticle::query()
             ->with(['rubrique:id,code,name', 'famille:id,code,name']);
+
+        if ($year) {
+            $query->where('budget_year', $year);
+        }
 
         if (is_array($favoriteIds)) {
             $query->whereIn('id', $favoriteIds ?: [0]);

@@ -1,8 +1,15 @@
 <?php
 
+use App\Http\Middleware\AuthenticateApiKey;
+use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\EnsureTenantRole;
+use App\Http\Middleware\EnsureTenantSelected;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,16 +21,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\CheckMaintenanceMode::class,
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            CheckMaintenanceMode::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\EnsureTenantSelected::class,
-            'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
-            'api.key' => \App\Http\Middleware\AuthenticateApiKey::class,
-            'tenant.role' => \App\Http\Middleware\EnsureTenantRole::class,
+            'tenant' => EnsureTenantSelected::class,
+            'platform.admin' => EnsurePlatformAdmin::class,
+            'api.key' => AuthenticateApiKey::class,
+            'tenant.role' => EnsureTenantRole::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
@@ -31,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['code', 'camerpay', 'fapshi', 'cinetpay']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

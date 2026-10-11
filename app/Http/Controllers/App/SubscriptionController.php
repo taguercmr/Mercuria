@@ -7,6 +7,7 @@ use App\Models\PaymentTransaction;
 use App\Models\Plan;
 use App\Services\Billing\PlanQuotaService;
 use App\Services\Billing\SubscriptionCheckoutService;
+use App\Services\Payments\PaymentConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,7 +16,7 @@ use RuntimeException;
 
 class SubscriptionController extends Controller
 {
-    public function show(Request $request, PlanQuotaService $quotas): Response
+    public function show(Request $request, PlanQuotaService $quotas, PaymentConfig $payments): Response
     {
         $tenant = $request->user()->currentTenant;
         abort_unless($tenant, 403);
@@ -27,7 +28,7 @@ class SubscriptionController extends Controller
                 'pro' => Plan::query()->where('code', 'pro')->first()
                     ?? config('mercuria.plans.pro'),
             ],
-            'provider' => config('payments.default'),
+            'provider' => $payments->defaultProvider(),
             'transactions' => PaymentTransaction::query()
                 ->where('tenant_id', $tenant->id)
                 ->latest()
@@ -39,13 +40,14 @@ class SubscriptionController extends Controller
     public function checkout(
         Request $request,
         SubscriptionCheckoutService $checkout,
-    ): RedirectResponse {
+    ): RedirectResponse|\Symfony\Component\HttpFoundation\Response {
         $tenant = $request->user()->currentTenant;
         abort_unless($tenant, 403);
 
         $data = $request->validate([
             'billing_cycle' => ['required', 'in:monthly,yearly'],
-            'provider' => ['nullable', 'in:fapshi,cinetpay'],
+            'provider' => ['nullable', 'in:camerpay,fapshi,cinetpay'],
+            'customer_phone' => ['nullable', 'string', 'max:32'],
         ]);
 
         try {
@@ -55,16 +57,17 @@ class SubscriptionController extends Controller
                 provider: $data['provider'] ?? null,
                 customerEmail: $request->user()->email,
                 customerName: $request->user()->name,
+                customerPhone: $data['customer_phone'] ?? null,
             );
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         if (blank($result['checkout_url'])) {
-            return back()->with('error', 'Impossible d\'initier le paiement. Vérifiez les clés Fapshi/CinetPay.');
+            return back()->with('error', 'Impossible d\'initier le paiement. Vérifiez la configuration CamerPay dans l\'admin.');
         }
 
-        return redirect()->away($result['checkout_url']);
+        return Inertia::location($result['checkout_url']);
     }
 
     public function return(Request $request): RedirectResponse

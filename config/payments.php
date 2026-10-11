@@ -7,12 +7,19 @@ return [
     | Default payment provider
     |--------------------------------------------------------------------------
     |
-    | Primary: fapshi — Secondary adapter: cinetpay
+    | Primary: camerpay — fallbacks: fapshi, cinetpay
+    | Overridable from Admin > Paiements (PlatformSetting).
     |
     */
-    'default' => env('PAYMENT_PROVIDER', 'fapshi'),
+    'default' => env('PAYMENT_PROVIDER', 'camerpay'),
 
     'currency' => env('PAYMENT_CURRENCY', 'XAF'),
+
+    'camerpay' => [
+        'api_token' => env('CAMERPAY_API_TOKEN'),
+        'callback_secret' => env('CAMERPAY_CALLBACK_SECRET'),
+        'base_url' => env('CAMERPAY_BASE_URL', 'https://camerpay.biz/api'),
+    ],
 
     'fapshi' => [
         'apiuser' => env('FAPSHI_APIUSER'),

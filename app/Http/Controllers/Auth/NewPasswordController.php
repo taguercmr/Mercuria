@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,8 +23,10 @@ class NewPasswordController extends Controller
     public function create(Request $request): Response
     {
         return Inertia::render('Auth/ResetPassword', [
-            'email' => $request->email,
-            'token' => $request->route('token'),
+            'email' => $request->session()->get('password_reset_email', ''),
+            'status' => $request->session()->get('status'),
+            'expiresInMinutes' => config('auth.passwords.users.expire'),
+            'resendAvailableIn' => max(0, 60 - (now()->timestamp - (int) $request->session()->get('password_reset_requested_at', 0))),
         ]);
     }
 
@@ -34,20 +37,29 @@ class NewPasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
+        $data = $request->validate([
+            'code' => ['required', 'string', 'regex:/^[A-Za-z2-9]{7}$/'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'email.required' => 'Indiquez votre adresse email.',
+            'email.email' => 'Indiquez une adresse email valide.',
+            'code.required' => 'Saisissez le code reçu par email.',
+            'code.regex' => 'Le code doit contenir exactement 7 lettres ou chiffres.',
+            'password.required' => 'Choisissez un nouveau mot de passe.',
+            'password.min' => 'Le mot de passe doit contenir au moins :min caractères.',
+            'password.confirmed' => 'Les deux mots de passe ne correspondent pas.',
         ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) use ($request) {
+            [
+                'email' => mb_strtolower(trim($data['email'])),
+                'token' => strtoupper($data['code']),
+                'password' => $data['password'],
+            ],
+            function (User $user, string $password): void {
                 $user->forceFill([
-                    'password' => Hash::make($request->password),
+                    'password' => Hash::make($password),
                     'remember_token' => Str::random(60),
                 ])->save();
 
@@ -55,15 +67,14 @@ class NewPasswordController extends Controller
             }
         );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
         if ($status == Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', __($status));
+            $request->session()->forget(['password_reset_email', 'password_reset_requested_at']);
+
+            return redirect()->route('login')->with('status', 'Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter.');
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'code' => 'Ce code est invalide ou expiré. Vérifiez l’adresse email et le code, ou demandez-en un nouveau.',
         ]);
     }
 }

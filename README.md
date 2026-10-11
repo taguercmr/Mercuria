@@ -56,12 +56,15 @@ php artisan mercuriale:index
 
 ## API Pro
 
+Documentation complète dans l’app : **Espace développeurs** (`/app/developers`).
+
 ```http
 GET /api/v1/mercuriale/articles?q=adaptateur
 X-Api-Key: mrc_...
 ```
 
-Throttle : 60 req/min. Clés dans `/app/developers`.
+Endpoints : rubriques, articles (recherche/pagination), article par référence.
+Throttle : 60 req/min. Plan Pro requis.
 
 ## Déploiement
 

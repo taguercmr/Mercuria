@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Mercuriale\MercurialeSearchService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Throwable;
@@ -61,7 +62,7 @@ class SmokeTestCommand extends Command
         $check(
             'Platform admin',
             $adminExists,
-            $adminExists ? 'present' : 'run: php artisan db:seed'
+            $adminExists ? 'present' : 'run: php artisan mercuria:admin your-email@example.com'
         );
 
         $base = rtrim((string) ($this->option('base') ?: config('app.url')), '/');
@@ -88,7 +89,7 @@ class SmokeTestCommand extends Command
     private function dbOk(): bool
     {
         try {
-            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            DB::connection()->getPdo();
 
             return true;
         } catch (Throwable) {

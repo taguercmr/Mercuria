@@ -1,5 +1,6 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
+import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -14,108 +15,100 @@ export default function Register() {
         password_confirmation: '',
     });
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-
+    const submit: FormEventHandler = (event) => {
+        event.preventDefault();
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
 
     return (
-        <GuestLayout>
-            <Head title="Register" />
-
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
-
+        <GuestLayout
+            mode="register"
+            title="La suite commence ici."
+            description="Créez votre compte et donnez de l’élan à vos projets."
+        >
+            <Head title="Créer un compte" />
+            <form onSubmit={submit} className="ma-form" aria-busy={processing}>
+                <div className="ma-field">
+                    <InputLabel htmlFor="name" value="Nom complet" />
                     <TextInput
                         id="name"
                         name="name"
                         value={data.name}
-                        className="mt-1 block w-full"
+                        className="ma-input"
+                        placeholder="Votre prénom et votre nom"
                         autoComplete="name"
-                        isFocused={true}
-                        onChange={(e) => setData('name', e.target.value)}
+                        isFocused
                         required
+                        aria-invalid={!!errors.name}
+                        aria-describedby={errors.name ? 'name-error' : undefined}
+                        onChange={(event) => setData('name', event.target.value)}
                     />
-
-                    <InputError message={errors.name} className="mt-2" />
+                    <InputError id="name-error" message={errors.name} className="ma-error" role="alert" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
-
+                <div className="ma-field">
+                    <InputLabel htmlFor="email" value="Adresse email" />
                     <TextInput
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
+                        className="ma-input"
+                        placeholder="vous@entreprise.com"
                         autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
+                        autoCapitalize="none"
+                        spellCheck={false}
                         required
+                        aria-invalid={!!errors.email}
+                        aria-describedby={errors.email ? 'email-error' : undefined}
+                        onChange={(event) => setData('email', event.target.value)}
                     />
-
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError id="email-error" message={errors.email} className="ma-error" role="alert" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
+                <div className="ma-field">
+                    <InputLabel htmlFor="password" value="Mot de passe" />
+                    <PasswordInput
                         id="password"
-                        type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
+                        className="ma-input"
+                        placeholder="Choisissez un mot de passe"
                         autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
                         required
+                        aria-invalid={!!errors.password}
+                        aria-describedby={errors.password ? 'password-error' : undefined}
+                        onChange={(event) => setData('password', event.target.value)}
                     />
-
-                    <InputError message={errors.password} className="mt-2" />
+                    <InputError id="password-error" message={errors.password} className="ma-error" role="alert" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
+                <div className="ma-field">
+                    <InputLabel htmlFor="password_confirmation" value="Confirmer le mot de passe" />
+                    <PasswordInput
                         id="password_confirmation"
-                        type="password"
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="mt-1 block w-full"
+                        visibilityLabel="la confirmation du mot de passe"
+                        className="ma-input"
+                        placeholder="Saisissez-le une seconde fois"
                         autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
                         required
+                        aria-invalid={!!errors.password_confirmation}
+                        aria-describedby={errors.password_confirmation ? 'confirmation-error' : undefined}
+                        onChange={(event) => setData('password_confirmation', event.target.value)}
                     />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
+                    <InputError id="confirmation-error" message={errors.password_confirmation} className="ma-error" role="alert" />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Already registered?
-                    </Link>
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
+                <PrimaryButton type="submit" className="ma-submit" disabled={processing}>
+                    {processing ? 'Création de votre compte…' : 'Créer mon compte'}
+                    <span aria-hidden="true" className={processing ? 'ma-spinner' : 'ma-arrow'}>{processing ? '' : '→'}</span>
+                </PrimaryButton>
             </form>
+            <p className="ma-account-link">Déjà un compte ? <Link href={route('login')}>Se connecter</Link></p>
         </GuestLayout>
     );
 }

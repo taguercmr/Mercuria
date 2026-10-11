@@ -70,7 +70,7 @@ export default function ClientForm({ client }: { client: Client | null }) {
                     <InputLabel htmlFor="address" value="Adresse" />
                     <textarea
                         id="address"
-                        className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                        className="mt-1 w-full rounded-md border-gray-300 shadow-xs"
                         rows={3}
                         value={data.address}
                         onChange={(e) => setData('address', e.target.value)}

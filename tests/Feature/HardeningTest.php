@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Documents\DocumentNumberGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class HardeningTest extends TestCase
@@ -32,6 +33,29 @@ class HardeningTest extends TestCase
         $user->forceFill(['current_tenant_id' => $tenant->id])->save();
 
         return [$user, $tenant];
+    }
+
+    public function test_owner_can_open_new_quote_form(): void
+    {
+        [$owner] = $this->membership('owner');
+
+        $this->actingAs($owner)
+            ->get(route('app.documents.create', ['type' => 'quote']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('App/Documents/Form')
+                ->where('type', 'quote')
+                ->where('document', null)
+            );
+    }
+
+    public function test_viewer_cannot_open_document_form(): void
+    {
+        [$viewer] = $this->membership('viewer');
+
+        $this->actingAs($viewer)
+            ->get(route('app.documents.create', ['type' => 'quote']))
+            ->assertForbidden();
     }
 
     public function test_viewer_cannot_create_document(): void

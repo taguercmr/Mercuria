@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\PasswordResetCode;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -25,6 +26,14 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_platform_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PasswordResetCode($token));
     }
 
     public function tenants(): BelongsToMany

@@ -11,6 +11,8 @@ class PaymentStatusResult
         public readonly ?string $externalId = null,
         public readonly ?int $amount = null,
         public readonly array $raw = [],
+        public readonly ?string $currency = null,
+        public readonly ?bool $isSandbox = null,
     ) {}
 
     public function isSuccessful(): bool

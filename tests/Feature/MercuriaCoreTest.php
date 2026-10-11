@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\TeamInvitationMail;
 use App\Models\ApiKey;
 use App\Models\Document;
 use App\Models\MercurialeArticle;
@@ -56,7 +57,7 @@ class MercuriaCoreTest extends TestCase
             'email' => 'collegue@example.com',
             'role' => 'editor',
         ]);
-        Mail::assertSent(\App\Mail\TeamInvitationMail::class);
+        Mail::assertSent(TeamInvitationMail::class);
     }
 
     public function test_free_plan_blocks_second_team_member(): void
@@ -170,15 +171,78 @@ class MercuriaCoreTest extends TestCase
             ->assertStatus(402);
     }
 
+    public function test_existing_api_key_returns_402_at_expiry_and_works_again_after_renewal(): void
+    {
+        $this->freezeSecond();
+        [$user, $tenant] = $this->actingTenantOwner('pro');
+        $issued = ApiKey::issue($tenant, $user, 'subscription lifecycle');
+        $expiresAt = $tenant->subscription_ends_at->copy();
+
+        $this->travelTo($expiresAt->copy()->subSecond());
+        $this->withHeader('X-Api-Key', $issued['plain'])
+            ->getJson('/api/v1/mercuriale/rubriques')
+            ->assertOk();
+
+        $this->travelTo($expiresAt);
+
+        foreach ([
+            '/api/v1/mercuriale/rubriques',
+            '/api/v1/mercuriale/articles',
+            '/api/v1/mercuriale/articles/01-001-100001',
+        ] as $endpoint) {
+            $this->getJson($endpoint)->assertStatus(402);
+        }
+
+        $this->travel(1)->day();
+        $this->getJson('/api/v1/mercuriale/rubriques')->assertStatus(402);
+
+        $tenant->update(['subscription_ends_at' => now()->addMonth()]);
+
+        $this->getJson('/api/v1/mercuriale/rubriques')->assertOk();
+        $this->assertTrue($issued['model']->fresh()->is_active);
+    }
+
+    public function test_expired_subscription_cannot_create_a_new_api_key(): void
+    {
+        $this->freezeSecond();
+        [$user, $tenant] = $this->actingTenantOwner('pro');
+        $tenant->update(['subscription_ends_at' => now()->subSecond()]);
+
+        $this->actingAs($user)
+            ->post(route('app.developers.keys.store'), ['name' => 'New integration'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('api_keys', 0);
+    }
+
     public function test_pro_api_lists_rubriques(): void
     {
         [$user, $tenant] = $this->actingTenantOwner('pro');
         $issued = ApiKey::issue($tenant, $user, 'prod');
 
-        MercurialeRubrique::query()->create([
+        $rubrique = MercurialeRubrique::query()->create([
             'code' => '01',
             'name' => 'Fournitures',
             'articles_count' => 1,
+        ]);
+        $famille = MercurialeFamille::query()->create([
+            'rubrique_id' => $rubrique->id,
+            'code' => '001',
+            'name' => 'Général',
+            'articles_count' => 1,
+        ]);
+        MercurialeArticle::query()->create([
+            'rubrique_id' => $rubrique->id,
+            'famille_id' => $famille->id,
+            'reference' => '01-001-100001',
+            'article_code' => '100001',
+            'designation' => 'Article test',
+            'unit' => 'UNITE',
+            'quantity' => 1,
+            'unit_price' => 1000,
+            'budget_year' => (int) config('mercuria.mercuriale_year', 2026),
+            'source' => 'test',
         ]);
 
         $this->withHeader('X-Api-Key', $issued['plain'])

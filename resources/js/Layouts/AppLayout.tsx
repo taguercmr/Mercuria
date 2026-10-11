@@ -1,10 +1,12 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import Dropdown from '@/Components/Dropdown';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 
 const allNav = [
     { href: '/app/dashboard', label: 'Tableau de bord' },
-    { href: '/app/catalogue', label: 'Mercuriale 2026' },
+    { href: '/app/guide', label: "Guide d'utilisation" },
+    { href: '/app/catalogue', label: 'Mercuriale' },
     { href: '/app/documents/create?type=quote', label: 'Nouveau devis', write: true },
     { href: '/app/documents', label: 'Documents' },
     { href: '/app/templates', label: 'Modeles' },
@@ -14,7 +16,7 @@ const allNav = [
     { href: '/app/subscription', label: 'Abonnement' },
     { href: '/app/developers', label: 'API Developpeurs' },
     { href: '/app/tickets', label: 'Support' },
-    { href: '/app/settings', label: 'Parametres' },
+    { href: '/app/settings', label: 'Personnalisation' },
 ];
 
 type TenantOption = {
@@ -50,6 +52,18 @@ function NavLinks({
     );
 }
 
+function LogoutButton({ className = '' }: { className?: string }) {
+    return (
+        <button
+            type="button"
+            className={className}
+            onClick={() => router.post(route('logout'))}
+        >
+            Déconnexion
+        </button>
+    );
+}
+
 export default function AppLayout({
     children,
     title,
@@ -61,6 +75,7 @@ export default function AppLayout({
         auth: {
             user: {
                 name: string;
+                email?: string;
                 is_platform_admin?: boolean;
                 can_write?: boolean;
                 tenant_role?: string | null;
@@ -82,7 +97,7 @@ export default function AppLayout({
             <div className="mx-auto flex min-h-screen max-w-[1400px]">
                 <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
                     <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-5">
-                        <ApplicationLogo className="h-8 w-8 fill-current text-[#0b6e4f]" />
+                        <ApplicationLogo className="h-9 w-10 shrink-0" />
                         <div>
                             <div className="font-semibold text-[#0b6e4f]">Mercuria</div>
                             <div className="text-xs text-slate-500">
@@ -111,15 +126,22 @@ export default function AppLayout({
                     <nav className="flex flex-1 flex-col gap-1 p-3">
                         <NavLinks canWrite={canWrite} />
                     </nav>
-                    <div className="border-t border-slate-100 p-4 text-xs text-slate-500">
-                        Plan {tenant?.plan ?? 'free'}
+                    <div className="space-y-3 border-t border-slate-100 p-4 text-xs text-slate-500">
+                        <div>
+                            Plan {tenant?.plan ?? 'free'}
+                            {auth.user?.tenant_role && (
+                                <span className="ml-1">· {auth.user.tenant_role}</span>
+                            )}
+                        </div>
                         {auth.user?.is_platform_admin && (
-                            <div className="mt-2">
-                                <Link href="/admin" className="text-[#0b6e4f] hover:underline">
-                                    Console Admin
-                                </Link>
-                            </div>
+                            <Link href="/admin" className="block text-[#0b6e4f] hover:underline">
+                                Console Admin
+                            </Link>
                         )}
+                        <Link href={route('profile.edit')} className="block hover:text-[#0b6e4f]">
+                            Mon compte
+                        </Link>
+                        <LogoutButton className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-left text-sm font-medium text-rose-700 hover:bg-rose-100" />
                     </div>
                 </aside>
 
@@ -140,7 +162,7 @@ export default function AppLayout({
                                 {title ?? 'Tableau de bord'}
                             </h1>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                             <Link
                                 href={route('app.notifications.index')}
                                 className="relative rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50"
@@ -161,7 +183,59 @@ export default function AppLayout({
                                     </span>
                                 )}
                             </Link>
-                            <div className="text-sm text-slate-600">{auth.user?.name}</div>
+
+                            <LogoutButton className="hidden rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 sm:inline-flex" />
+
+                            <div className="relative">
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                                            aria-label="Menu compte"
+                                        >
+                                            <span className="max-w-[72px] truncate font-medium sm:max-w-[140px]">
+                                                {auth.user?.name}
+                                            </span>
+                                            <svg
+                                                className="h-4 w-4 text-slate-400"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content align="right" width="48">
+                                        <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+                                            {auth.user?.email}
+                                        </div>
+                                        <Dropdown.Link href={route('profile.edit')}>
+                                            Mon compte
+                                        </Dropdown.Link>
+                                        <Dropdown.Link href={route('app.settings.edit')}>
+                                            Personnalisation
+                                        </Dropdown.Link>
+                                        {auth.user?.is_platform_admin && (
+                                            <Dropdown.Link href="/admin">
+                                                Console Admin
+                                            </Dropdown.Link>
+                                        )}
+                                        <Dropdown.Link
+                                            href={route('logout')}
+                                            method="post"
+                                            as="button"
+                                            className="text-rose-700 hover:bg-rose-50 focus:bg-rose-50 sm:hidden"
+                                        >
+                                            Déconnexion
+                                        </Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
+                            </div>
                         </div>
                     </header>
                     <main className="flex-1 p-4 md:p-6">{children}</main>
@@ -179,7 +253,7 @@ export default function AppLayout({
                     <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-white shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
                             <div className="flex items-center gap-2">
-                                <ApplicationLogo className="h-7 w-7 fill-current text-[#0b6e4f]" />
+                                <ApplicationLogo className="h-8 w-9 shrink-0" />
                                 <span className="font-semibold text-[#0b6e4f]">Mercuria</span>
                             </div>
                             <button
@@ -211,11 +285,21 @@ export default function AppLayout({
                         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
                             <NavLinks canWrite={canWrite} onNavigate={() => setMobileOpen(false)} />
                         </nav>
-                        <div className="border-t border-slate-100 p-4 text-xs text-slate-500">
-                            {tenant?.name} — plan {tenant?.plan ?? 'free'}
-                            {auth.user?.tenant_role && (
-                                <span className="ml-1">({auth.user.tenant_role})</span>
-                            )}
+                        <div className="space-y-2 border-t border-slate-100 p-4 text-sm">
+                            <div className="text-xs text-slate-500">
+                                {auth.user?.name}
+                                {auth.user?.email && (
+                                    <div className="truncate">{auth.user.email}</div>
+                                )}
+                            </div>
+                            <Link
+                                href={route('profile.edit')}
+                                className="block rounded-lg px-3 py-2 hover:bg-emerald-50"
+                                onClick={() => setMobileOpen(false)}
+                            >
+                                Mon compte
+                            </Link>
+                            <LogoutButton className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-left font-medium text-rose-700 hover:bg-rose-100" />
                         </div>
                     </div>
                 </div>

@@ -4,9 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Plan;
 use App\Models\PlatformSetting;
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -43,20 +41,13 @@ class DatabaseSeeder extends Seeder
             ],
         ], ['code']);
 
-        PlatformSetting::setValue('maintenance_enabled', false);
-        PlatformSetting::setValue(
-            'maintenance_message',
-            config('mercuria.maintenance.default_message'),
-        );
+        foreach ([
+            'maintenance_enabled' => '0',
+            'maintenance_message' => config('mercuria.maintenance.default_message'),
+            'mercuriale_active_year' => (string) config('mercuria.mercuriale_year', 2026),
+        ] as $key => $value) {
+            PlatformSetting::query()->firstOrCreate(['key' => $key], ['value' => $value]);
+        }
 
-        User::query()->updateOrCreate(
-            ['email' => 'admin@mercuria.cm'],
-            [
-                'name' => 'Admin Mercuria',
-                'password' => Hash::make('password'),
-                'is_platform_admin' => true,
-                'email_verified_at' => now(),
-            ],
-        );
     }
 }

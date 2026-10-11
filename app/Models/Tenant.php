@@ -75,7 +75,8 @@ class Tenant extends Model
     public function isPaid(): bool
     {
         return $this->plan !== 'free'
-            && ($this->subscription_ends_at === null || $this->subscription_ends_at->isFuture());
+            && $this->subscription_ends_at !== null
+            && $this->subscription_ends_at->isFuture();
     }
 
     public function hasApiAccess(): bool

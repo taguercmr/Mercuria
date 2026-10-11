@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments\Adapters;
 
+use App\Services\Payments\PaymentConfig;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\Payments\PaymentInitiationResult;
 use App\Services\Payments\PaymentRequest;
@@ -12,6 +13,8 @@ use RuntimeException;
 
 class FapshiAdapter implements PaymentGatewayInterface
 {
+    public function __construct(private readonly PaymentConfig $config) {}
+
     public function name(): string
     {
         return 'fapshi';
@@ -19,7 +22,9 @@ class FapshiAdapter implements PaymentGatewayInterface
 
     public function initiate(PaymentRequest $request): PaymentInitiationResult
     {
-        $response = Http::withHeaders($this->headers())
+        $response = Http::connectTimeout(5)
+            ->timeout(20)
+            ->withHeaders($this->headers())
             ->acceptJson()
             ->post($this->baseUrl().'/initiate-pay', [
                 'amount' => $request->amount,
@@ -46,7 +51,9 @@ class FapshiAdapter implements PaymentGatewayInterface
 
     public function checkStatus(string $providerTransId): PaymentStatusResult
     {
-        $response = Http::withHeaders($this->headers())
+        $response = Http::connectTimeout(5)
+            ->timeout(15)
+            ->withHeaders($this->headers())
             ->acceptJson()
             ->get($this->baseUrl().'/payment-status/'.$providerTransId);
 
@@ -68,9 +75,9 @@ class FapshiAdapter implements PaymentGatewayInterface
 
     public function verifyWebhook(Request $request): PaymentStatusResult
     {
-        $secret = (string) config('payments.fapshi.webhook_secret');
+        $secret = (string) $this->config->get('fapshi', 'webhook_secret', '');
 
-        if ($secret !== '' && $request->header('x-wh-secret') !== $secret) {
+        if ($secret === '' || ! hash_equals($secret, (string) $request->header('x-wh-secret', ''))) {
             throw new RuntimeException('Invalid Fapshi webhook secret.');
         }
 
@@ -92,13 +99,13 @@ class FapshiAdapter implements PaymentGatewayInterface
     private function headers(): array
     {
         return [
-            'apiuser' => (string) config('payments.fapshi.apiuser'),
-            'apikey' => (string) config('payments.fapshi.apikey'),
+            'apiuser' => (string) $this->config->get('fapshi', 'apiuser', ''),
+            'apikey' => (string) $this->config->get('fapshi', 'apikey', ''),
         ];
     }
 
     private function baseUrl(): string
     {
-        return rtrim((string) config('payments.fapshi.base_url'), '/');
+        return rtrim((string) $this->config->get('fapshi', 'base_url', 'https://sandbox.fapshi.com'), '/');
     }
 }

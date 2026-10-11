@@ -1,0 +1,138 @@
+.mercuria-auth {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    min-height: 100vh;
+    min-height: 100svh;
+    flex-direction: column;
+    overflow: clip;
+    background: #f7faf6;
+    color: #173b2d;
+    -webkit-font-smoothing: antialiased;
+}
+
+.mercuria-auth :focus-visible { outline: 3px solid #c29a5b; outline-offset: 4px; }
+.ma-backdrop { position: absolute; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+.ma-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(#0b6e4f05 1px, transparent 1px), linear-gradient(90deg, #0b6e4f05 1px, transparent 1px);
+    background-size: 90px 90px;
+    mask-image: radial-gradient(ellipse at center, transparent 24%, black 100%);
+}
+.ma-halo { position: absolute; border-radius: 50%; filter: blur(30px); }
+.ma-halo-green { width: 780px; height: 700px; left: calc(50% - 780px); top: 5%; background: radial-gradient(ellipse, #cce5d280, transparent 68%); animation: ma-breathe 12s ease-in-out infinite alternate; }
+.ma-halo-gold { width: 660px; height: 700px; left: 48%; top: 16%; background: radial-gradient(ellipse, #ecdfbd55, transparent 66%); }
+.ma-orbit { position: absolute; width: 1000px; height: 530px; left: calc(50% - 500px); top: calc(50% - 240px); border: 1px solid #61927214; border-radius: 50%; transform: rotate(-28deg); }
+.ma-orbit-two { width: 1130px; height: 680px; left: calc(50% - 565px); top: calc(50% - 310px); transform: rotate(-28deg); border-color: #6192720b; }
+.ma-pearl { position: absolute; width: 18px; height: 18px; left: calc(50% + 345px); top: 30%; border-radius: 50%; background: radial-gradient(circle at 25% 20%, #fff8e0, #cfb074 60%, #ae915c); box-shadow: 0 13px 18px #89743b18; }
+.ma-topbar { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 25px 36px; }
+.ma-back-link { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; color: #60776a; border-radius: 5px; transition: color .2s; }
+.ma-back-link > span { font-size: 18px; }
+.ma-back-link:hover { color: #0b6e4f; }
+.ma-top-note { display: flex; align-items: center; gap: 7px; font-size: 10px; color: #7b8d7f; }
+.ma-top-note > i { width: 5px; height: 5px; background: #b89860; border-radius: 50%; }
+.ma-main { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px 24px 20px; }
+.ma-brand-block { text-align: center; margin-bottom: 25px; }
+.ma-brand { display: inline-flex; gap: 11px; align-items: center; color: #0b6e4f; font-weight: 600; letter-spacing: -1.2px; font-size: 32px; border-radius: 8px; }
+.ma-brand > svg { width: 45px; height: 40px; }
+.ma-brand-dot { color: #c29a5b; }
+.ma-brand-block > p { margin: 11px 0 0; color: #7c8a7d; font-size: 11px; letter-spacing: .1px; }
+.ma-card { position: relative; width: 100%; max-width: 460px; border: 1px solid #fff; border-radius: 22px; padding: 29px 32px; background: linear-gradient(145deg, #ffffffed, #ffffffd9); backdrop-filter: blur(16px); box-shadow: 0 0 0 1px #e0e9dd80, 0 4px 8px -5px #28493218, 0 23px 55px -26px #224b3233; animation: ma-enter .45s ease-out both; }
+.ma-card::before { content: ''; position: absolute; top: -1px; height: 1px; width: 55%; left: 22.5%; background: linear-gradient(90deg, transparent, #d9c6a0, transparent); }
+.ma-switch { display: flex; gap: 4px; padding: 4px; border: 1px solid #e3ebdf; background: #f1f5ee; border-radius: 10px; margin-bottom: 26px; }
+.ma-switch > a { flex: 1; text-align: center; padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: #7b8979; transition: background .2s, color .2s; }
+.ma-switch > a:hover { color: #0b6e4f; }
+.ma-switch > a[aria-current='page'] { color: #0b6e4f; background: #fff; box-shadow: 0 2px 5px #294f2f12; font-weight: 600; }
+.ma-heading { margin-bottom: 25px; }
+.ma-eyebrow { color: #9c8459; font-size: 8px; letter-spacing: 1.65px; font-weight: 600; }
+.ma-heading h1 { margin: 8px 0 9px; font-size: 26px; font-weight: 600; letter-spacing: -1px; line-height: 1.2; }
+.ma-heading p { font-size: 12px; color: #7d8b7c; line-height: 1.7; margin: 0; }
+.ma-form { display: flex; flex-direction: column; gap: 19px; }
+.ma-field { min-width: 0; }
+.ma-field > label { font-size: 12px; font-weight: 500; color: #3a5443; margin-bottom: 8px; }
+.mercuria-auth .ma-input { display: block; width: 100%; height: 46px; border: 1px solid #dce5d8; border-radius: 9px; background: #fcfdfa; color: #254831; padding: 12px 14px; font-size: 13px; box-shadow: inset 0 1px 2px #24442703; transition: border-color .2s, box-shadow .2s, background .2s; }
+.mercuria-auth .ma-input::placeholder { color: #9ba597; }
+.mercuria-auth .ma-input:hover { border-color: #b8cdb4; }
+.mercuria-auth .ma-input:focus { outline: none; border-color: #438d69; background: white; --tw-ring-color: transparent; box-shadow: 0 0 0 3px #0b6e4f0d; }
+.mercuria-auth .ma-input[aria-invalid='true'] { border-color: #c26e64; box-shadow: 0 0 0 2px #c26e640d; }
+.ma-password { position: relative; }
+.mercuria-auth .ma-password > input { padding-right: 48px; }
+.ma-password-toggle { position: absolute; right: 4px; top: 3px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 7px; color: #7c8c79; transition: color .2s, background .2s; }
+.ma-password-toggle:hover { color: #0b6e4f; background: #eef4e9; }
+.ma-password-toggle > svg { width: 19px; height: 19px; }
+.ma-options { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin: 1px 0 2px; }
+.ma-remember { display: flex; align-items: center; gap: 8px; color: #73806f; font-size: 11px; cursor: pointer; }
+.mercuria-auth .ma-remember input { border-color: #ccd9c7; color: #0b6e4f; width: 15px; height: 15px; border-radius: 4px; --tw-ring-color: #0b6e4f; }
+.ma-link { font-size: 11px; font-weight: 500; color: #0b6e4f; text-underline-offset: 3px; }
+.ma-link:hover, .ma-account-link a:hover { text-decoration: underline; }
+.mercuria-auth .ma-submit { display: flex; width: 100%; min-height: 47px; justify-content: center; gap: 16px; border: 1px solid #086748; border-radius: 9px; padding: 12px 18px; background: linear-gradient(155deg, #148561, #085e43); color: white; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 600; box-shadow: inset 0 1px 0 #ffffff25, 0 5px 9px #0b6e4f13; --tw-ring-color: #c29a5b; transition: transform .2s, box-shadow .2s; }
+.mercuria-auth .ma-submit:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 15px #0b6e4f22; }
+.mercuria-auth .ma-submit:disabled { opacity: .65; cursor: wait; }
+.ma-arrow { font-size: 19px; font-weight: 400; line-height: 1; }
+.ma-spinner { width: 15px; height: 15px; border: 2px solid #ffffff55; border-top-color: white; border-radius: 50%; animation: ma-spin .8s linear infinite; }
+.ma-account-link { border-top: 1px solid #edf1e9; padding-top: 21px; margin: 23px 0 0; text-align: center; color: #87917e; font-size: 11px; line-height: 1.8; }
+.ma-account-link a { color: #0b6e4f; font-weight: 600; margin-left: 4px; text-underline-offset: 3px; }
+.ma-error { margin-top: 7px; font-size: 11px; line-height: 1.6; color: #a64c40; }
+.ma-status { padding: 12px 14px; margin-bottom: 20px; border: 1px solid #d7e7cf; border-radius: 8px; background: #eff6e9; color: #426634; font-size: 12px; line-height: 1.7; }
+.ma-bottom-note { text-align: center; margin-top: 24px; color: #8a9682; }
+.ma-gold-line { display: block; height: 2px; width: 24px; margin: 0 auto 10px; background: #c29a5b80; border-radius: 3px; }
+.ma-bottom-note p { font-size: 10px; line-height: 1.75; margin: 0; }
+.ma-footer { padding: 17px 24px 23px; font-size: 10px; text-align: center; color: #99a08f; }
+.ma-footer > span { padding: 0 8px; color: #b9bdaf; }
+.ma-register .ma-main { padding-top: 8px; }
+.ma-register .ma-form { gap: 15px; }
+.ma-register .ma-brand-block { margin-bottom: 22px; }
+.ma-register .ma-bottom-note { margin-top: 20px; }
+@keyframes ma-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ma-recovery-steps { display: flex; gap: 14px; list-style: none; padding: 0; margin: 0 0 24px; color: #75857f; font-size: 10px; }
+.ma-recovery-steps li { display: flex; align-items: center; gap: 7px; }
+.ma-recovery-steps li > span { display: grid; place-items: center; flex-shrink: 0; width: 23px; height: 23px; border-radius: 50%; background: #edf3f0; }
+.ma-recovery-steps [aria-current="step"] { color: #076b52; font-weight: 600; }
+.ma-recovery-steps [aria-current="step"] > span { background: #076b52; color: white; }
+.ma-field-hint { margin: 5px 0 0; color: #667d72; font-size: 11px; line-height: 1.7; }
+.mercuria-auth .ma-code-input { text-align: center; letter-spacing: .3em; font-size: 23px; font-weight: 600; color: #076b52; font-family: ui-monospace, monospace; }
+.ma-resend { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 5px 8px; margin-top: 20px; font-size: 11px; color: #667d72; }
+.ma-resend button { color: #076b52; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.ma-resend button:disabled { color: #829188; cursor: not-allowed; text-decoration: none; }
+.ma-resend button:focus-visible { outline: 2px solid #076b52; outline-offset: 4px; }
+.ma-resend .ma-error { width: 100%; text-align: center; }
+@keyframes ma-breathe { from { opacity: .7; transform: translateY(-12px); } to { opacity: 1; transform: translateY(15px); } }
+@keyframes ma-spin { to { transform: rotate(360deg); } }
+@media (max-width: 700px) {
+    .ma-topbar { padding: 20px 24px; }
+    .ma-top-note { display: none; }
+    .ma-pearl { left: auto; right: 6%; top: 17%; width: 13px; height: 13px; opacity: .55; }
+    .ma-orbit { width: 780px; left: calc(50% - 390px); }
+    .ma-orbit-two { width: 900px; left: calc(50% - 450px); }
+}
+@media (max-width: 480px) {
+    .ma-topbar { padding: 17px 20px; }
+    .ma-back-link { font-size: 11px; }
+    .ma-main { padding: 15px 18px; }
+    .ma-brand { font-size: 29px; gap: 9px; }
+    .ma-brand > svg { width: 39px; height: 35px; }
+    .ma-brand-block { margin-bottom: 22px; }
+    .ma-brand-block > p { font-size: 10px; }
+    .ma-card { border-radius: 18px; padding: 24px 22px; }
+    .ma-switch { margin-bottom: 23px; }
+    .ma-heading h1 { font-size: 24px; }
+    .ma-heading p { font-size: 11px; }
+    .mercuria-auth .ma-input { font-size: 16px; }
+    .mercuria-auth .ma-input::placeholder { font-size: 12px; }
+    .ma-options { gap: 10px; }
+    .ma-remember, .ma-link { font-size: 10px; }
+    .ma-account-link { font-size: 10px; }
+    .ma-bottom-note { margin-top: 21px; }
+    .ma-footer { padding-bottom: 19px; }
+}
+@media (max-width: 350px) {
+    .ma-main { padding-inline: 12px; }
+    .ma-card { padding-inline: 19px; }
+    .ma-heading h1 { font-size: 22px; }
+    .ma-options { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mercuria-auth *, .mercuria-auth *::before, .mercuria-auth *::after { animation: none !important; transition: none !important; }
+}

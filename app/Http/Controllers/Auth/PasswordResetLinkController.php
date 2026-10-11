@@ -9,43 +9,54 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class PasswordResetLinkController extends Controller
 {
     /**
-     * Display the password reset link request view.
+     * Display the password reset code request view.
      */
     public function create(): Response
     {
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
+            'email' => session('password_reset_email', ''),
         ]);
     }
 
     /**
-     * Handle an incoming password reset link request.
+     * Send a recovery code without disclosing whether the account exists.
      *
      * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => 'required|email',
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255'],
+        ], [
+            'email.required' => 'Indiquez votre adresse email.',
+            'email.email' => 'Indiquez une adresse email valide.',
         ]);
+        $email = mb_strtolower(trim($data['email']));
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        try {
+            Password::sendResetLink(['email' => $email]);
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
 
-        if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+            throw ValidationException::withMessages([
+                'email' => 'L’envoi de l’email est momentanément indisponible. Réessayez dans une minute.',
+            ]);
         }
 
-        throw ValidationException::withMessages([
-            'email' => [trans($status)],
+        $request->session()->put([
+            'password_reset_email' => $email,
+            'password_reset_requested_at' => now()->timestamp,
         ]);
+
+        return redirect()->route('password.reset')->with(
+            'status',
+            'Si un compte correspond à cette adresse, un code de 7 caractères vous a été envoyé. Vérifiez aussi vos courriers indésirables.',
+        );
     }
 }

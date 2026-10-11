@@ -19,6 +19,9 @@ class DocumentTemplate extends Model
         'notes',
         'terms',
         'tax_rate',
+        'ir_rate',
+        'ir_mode',
+        'design',
         'lines',
     ];
 
@@ -27,6 +30,7 @@ class DocumentTemplate extends Model
         return [
             'lines' => 'array',
             'tax_rate' => 'decimal:2',
+            'ir_rate' => 'decimal:2',
         ];
     }
 

@@ -12,12 +12,14 @@ use App\Models\DocumentTemplate;
 use App\Models\MercurialeArticle;
 use App\Services\Billing\PlanQuotaService;
 use App\Services\Documents\DocumentNumberGenerator;
+use App\Services\Mercuriale\MercurialeYearService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use RuntimeException;
@@ -53,6 +55,8 @@ class DocumentController extends Controller
     public function create(Request $request): InertiaResponse
     {
         $this->authorize('create', Document::class);
+
+        $request->validate(['design' => ['sometimes', 'string', Rule::in(array_keys(config('documents.designs')))]]);
 
         $type = $request->get('type', Document::TYPE_QUOTE);
         if (! array_key_exists($type, Document::TYPES)) {
@@ -90,6 +94,9 @@ class DocumentController extends Controller
                 'notes' => $template->notes,
                 'terms' => $template->terms,
                 'tax_rate' => $template->tax_rate,
+                'ir_rate' => $template->ir_rate,
+                'ir_mode' => $template->ir_mode,
+                'design' => $template->design,
                 'lines' => $prefillLines,
                 'status' => 'draft',
             ] : null,
@@ -98,6 +105,9 @@ class DocumentController extends Controller
             'clients' => Client::query()->orderBy('name')->get(['id', 'name', 'company']),
             'prefillLines' => $prefillLines,
             'templates' => DocumentTemplate::query()->latest()->get(['id', 'name', 'type']),
+            'designs' => config('documents.designs'),
+            'defaultDesign' => $request->input('design', config('documents.default_design')),
+            'tenant' => $request->user()->currentTenant?->only(['name', 'email', 'phone', 'logo_path', 'letterhead', 'footer_text', 'signature_path']),
         ]);
     }
 
@@ -132,6 +142,9 @@ class DocumentController extends Controller
                 'issue_date' => $data['issue_date'] ?? now()->toDateString(),
                 'due_date' => $data['due_date'] ?? null,
                 'tax_rate' => $data['tax_rate'] ?? 0,
+                'ir_rate' => $data['ir_rate'] ?? 0,
+                'ir_mode' => $data['ir_mode'] ?? 'none',
+                'design' => $data['design'] ?? config('documents.default_design'),
                 'issued_at' => $data['status'] === 'issued' ? now() : null,
             ]);
 
@@ -153,16 +166,23 @@ class DocumentController extends Controller
             ->with('success', 'Document enregistré.');
     }
 
-    public function show(Document $document): InertiaResponse
+    public function show(Request $request, Document $document): InertiaResponse
     {
         $this->authorize('view', $document);
 
         $document->load(['client', 'lines.mercurialeArticle', 'creator']);
+        $tenant = $document->tenant()->first();
 
         return Inertia::render('App/Documents/Show', [
             'document' => $document,
             'types' => Document::TYPES,
-            'tenant' => $document->tenant()->first()?->only([
+            'designs' => config('documents.designs'),
+            'emailSender' => [
+                'address' => config('mail.from.address'),
+                'name' => $tenant?->name.' via Mercuria',
+                'reply_to' => $tenant?->email ?: $request->user()->email,
+            ],
+            'tenant' => $tenant?->only([
                 'name', 'email', 'phone', 'logo_path', 'letterhead', 'footer_text', 'signature_path', 'currency',
             ]),
         ]);
@@ -170,6 +190,7 @@ class DocumentController extends Controller
 
     public function pdf(Document $document): Response
     {
+        $this->authorize('view', $document);
         $document->load(['client', 'lines']);
         $tenant = $document->tenant()->first();
 
@@ -206,6 +227,7 @@ class DocumentController extends Controller
             document: $document,
             tenant: $tenant,
             customMessage: $data['message'] ?? null,
+            replyToEmail: $request->user()->email,
         ));
 
         if ($document->status === 'draft') {
@@ -231,6 +253,9 @@ class DocumentController extends Controller
             'types' => Document::TYPES,
             'clients' => Client::query()->orderBy('name')->get(['id', 'name', 'company']),
             'articleSuggestions' => [],
+            'designs' => config('documents.designs'),
+            'defaultDesign' => config('documents.default_design'),
+            'tenant' => $document->tenant()->first()?->only(['name', 'email', 'phone', 'logo_path', 'letterhead', 'footer_text', 'signature_path']),
         ]);
     }
 
@@ -255,6 +280,9 @@ class DocumentController extends Controller
                 'issue_date' => $data['issue_date'] ?? $document->issue_date,
                 'due_date' => $data['due_date'] ?? null,
                 'tax_rate' => $data['tax_rate'] ?? 0,
+                'ir_rate' => $data['ir_rate'] ?? $document->ir_rate,
+                'ir_mode' => $data['ir_mode'] ?? $document->ir_mode,
+                'design' => $data['design'] ?? $document->design,
                 'number' => $issuing
                     ? ($document->number ?: $numbers->next($request->user()->currentTenant, $data['type']))
                     : $document->number,
@@ -307,6 +335,9 @@ class DocumentController extends Controller
                 'issue_date' => now()->toDateString(),
                 'due_date' => $document->due_date,
                 'tax_rate' => $document->tax_rate,
+                'ir_rate' => $document->ir_rate,
+                'ir_mode' => $document->ir_mode,
+                'design' => $document->design,
                 'converted_from_id' => $document->id,
                 'issued_at' => now(),
             ]);
@@ -370,6 +401,9 @@ class DocumentController extends Controller
                 'issue_date' => now()->toDateString(),
                 'due_date' => $document->due_date,
                 'tax_rate' => $document->tax_rate,
+                'ir_rate' => $document->ir_rate,
+                'ir_mode' => $document->ir_mode,
+                'design' => $document->design,
             ]);
 
             foreach ($document->lines as $i => $line) {
@@ -396,6 +430,17 @@ class DocumentController extends Controller
         return redirect()
             ->route('app.documents.show', $copy)
             ->with('success', 'Document duplique en brouillon.');
+    }
+
+    public function updateDesign(Request $request, Document $document): RedirectResponse
+    {
+        $this->authorize('update', $document);
+        $data = $request->validate([
+            'design' => ['required', 'string', Rule::in(array_keys(config('documents.designs')))],
+        ]);
+        $document->update($data);
+
+        return back()->with('success', 'Design du document mis à jour.');
     }
 
     public function export(Request $request): StreamedResponse
@@ -436,20 +481,23 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function searchArticles(Request $request)
+    public function searchArticles(Request $request, MercurialeYearService $years)
     {
         $q = trim((string) $request->get('q', ''));
         if (strlen($q) < 2) {
             return response()->json([]);
         }
 
+        $year = $years->resolve($request->integer('year') ?: null);
+
         $articles = MercurialeArticle::query()
+            ->where('budget_year', $year)
             ->where(function ($query) use ($q): void {
                 $query->where('reference', 'like', "%{$q}%")
                     ->orWhere('designation', 'like', "%{$q}%");
             })
             ->limit(20)
-            ->get(['id', 'reference', 'designation', 'unit', 'unit_price', 'quantity']);
+            ->get(['id', 'reference', 'designation', 'unit', 'unit_price', 'quantity', 'budget_year']);
 
         return response()->json($articles);
     }
@@ -462,25 +510,32 @@ class DocumentController extends Controller
         $data = $request->validate([
             'type' => ['required', 'in:quote,proforma,purchase_order,invoice'],
             'status' => ['required', 'in:draft,issued'],
-            'client_id' => ['nullable', 'exists:clients,id'],
+            'client_id' => ['nullable', Rule::exists('clients', 'id')->where('tenant_id', $request->user()->current_tenant_id)],
             'currency' => ['nullable', 'string', 'max:8'],
             'title' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'terms' => ['nullable', 'string', 'max:5000'],
             'issue_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
-            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'ir_rate' => ['nullable', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'ir_mode' => ['nullable', Rule::in(['none', 'withholding', 'addition'])],
+            'design' => ['nullable', 'string', Rule::in(array_keys(config('documents.designs')))],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.mercuriale_article_id' => ['nullable', 'exists:mercuriale_articles,id'],
             'lines.*.reference' => ['nullable', 'string', 'max:20'],
             'lines.*.designation' => ['required', 'string', 'max:5000'],
             'lines.*.unit' => ['nullable', 'string', 'max:64'],
-            'lines.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            'lines.*.quantity' => ['required', 'numeric', 'min:0.001', 'decimal:0,3'],
             'lines.*.unit_price' => ['required', 'integer', 'min:0'],
         ]);
 
         if (($data['client_id'] ?? null) === '' || ($data['client_id'] ?? null) === null) {
             $data['client_id'] = null;
+        }
+
+        if (($data['ir_mode'] ?? null) === 'none') {
+            $data['ir_rate'] = 0;
         }
 
         return $data;

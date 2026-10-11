@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('role', 32)->default('editor'); // owner, editor, viewer
             $table->string('token', 64)->unique();
             $table->timestamp('accepted_at')->nullable();
-            $table->timestamp('expires_at');
+            // dateTime: MariaDB/MySQL reject NOT NULL timestamp without default under NO_ZERO_DATE
+            $table->dateTime('expires_at');
             $table->timestamps();
 
             $table->unique(['tenant_id', 'email']);

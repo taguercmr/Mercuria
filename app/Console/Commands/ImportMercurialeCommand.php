@@ -3,29 +3,32 @@
 namespace App\Console\Commands;
 
 use App\Services\Mercuriale\MercurialeImporter;
+use App\Services\Mercuriale\MercurialeYearService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 class ImportMercurialeCommand extends Command
 {
     protected $signature = 'mercuriale:import
-        {--source= : Path to extract .txt or PDF}
-        {--fresh : Truncate mercuriale tables before import}
+        {--source= : Path to extract .txt}
+        {--year= : Budget year (default: config mercuriale_year)}
+        {--fresh : Delete articles for that year before import}
+        {--activate : Set this year as the active mercuriale}
         {--index : Index into Meilisearch after import}';
 
-    protected $description = 'Import the MINCOMMERCE Budget 2026 mercuriale into the database';
+    protected $description = 'Import a MINCOMMERCE mercuriale (by budget year) into the database';
 
-    public function handle(MercurialeImporter $importer): int
+    public function handle(MercurialeImporter $importer, MercurialeYearService $years): int
     {
+        $year = (int) ($this->option('year') ?: config('mercuria.mercuriale_year', 2026));
         $source = $this->option('source')
             ?: base_path('docs/_mercuriale_extract.txt');
 
         if (! File::exists($source)) {
-            $pdf = base_path('docs/Mercuriale_BOND_2026.pdf');
-            if (File::exists($pdf)) {
+            $pdf = base_path("docs/Mercuriale_BOND_{$year}.pdf");
+            if (File::exists($pdf) || File::exists(base_path('docs/Mercuriale_BOND_2026.pdf'))) {
                 $this->error('Text extract not found. Provide --source=path/to/extract.txt');
-                $this->line('PDF is available at: '.$pdf);
-                $this->line('Generate text extract first, or place docs/_mercuriale_extract.txt');
+                $this->line('Generate a text extract from the official PDF first.');
 
                 return self::FAILURE;
             }
@@ -35,21 +38,23 @@ class ImportMercurialeCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('Reading '.$source.' ...');
-        $text = File::get($source);
-
         if (str_ends_with(strtolower($source), '.pdf')) {
             $this->warn('PDF binary passed — use a text extract for fidelity. Aborting.');
 
             return self::FAILURE;
         }
 
-        $this->info('Parsing & importing articles...');
-        $stats = $importer->importFromText($text, (bool) $this->option('fresh'));
+        $this->info("Importing mercuriale {$year} from {$source} ...");
+        $stats = $importer->importFromText(
+            File::get($source),
+            (bool) $this->option('fresh'),
+            $year,
+        );
 
         $this->table(
             ['Metric', 'Value'],
             [
+                ['Year', $stats['year']],
                 ['Articles', $stats['articles']],
                 ['Rubriques', $stats['rubriques']],
                 ['Familles', $stats['familles']],
@@ -57,7 +62,12 @@ class ImportMercurialeCommand extends Command
             ],
         );
 
-        $this->info('Mercuriale 2026 import completed.');
+        if ($this->option('activate')) {
+            $years->setActive($year);
+            $this->info("Active mercuriale year set to {$year}.");
+        }
+
+        $this->info("Mercuriale {$year} import completed.");
 
         if ($this->option('index')) {
             $this->call('mercuriale:index');

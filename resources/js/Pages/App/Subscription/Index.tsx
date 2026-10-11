@@ -27,7 +27,8 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
     const { flash } = usePage().props as { flash?: { success?: string; error?: string } };
     const { data, setData, post, processing } = useForm({
         billing_cycle: 'monthly',
-        provider: provider || 'fapshi',
+        provider: provider || 'camerpay',
+        customer_phone: '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -37,8 +38,8 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
 
     const proPrice =
         data.billing_cycle === 'yearly'
-            ? plans.pro?.price_yearly_xaf ?? 150000
-            : plans.pro?.price_monthly_xaf ?? 15000;
+            ? plans.pro?.price_yearly_xaf ?? 99000
+            : plans.pro?.price_monthly_xaf ?? 9900;
 
     return (
         <AppLayout title="Abonnement">
@@ -66,7 +67,10 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
                 <section className="rounded-2xl border border-emerald-700/30 bg-emerald-50 p-6">
                     <h2 className="text-lg font-semibold">Passer au plan Pro</h2>
                     <p className="mt-1 text-3xl font-semibold">
-                        {Number(proPrice).toLocaleString('fr-FR')} XAF
+                        {Number(proPrice).toLocaleString('fr-FR')} FCFA
+                        <span className="text-sm font-normal text-slate-600">
+                            {data.billing_cycle === 'yearly' ? ' / an' : ' / mois'}
+                        </span>
                     </p>
                     <form onSubmit={submit} className="mt-4 space-y-3">
                         <select
@@ -77,12 +81,20 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
                             <option value="monthly">Mensuel</option>
                             <option value="yearly">Annuel</option>
                         </select>
+                        <input
+                            type="tel"
+                            className="w-full rounded-xl border-slate-300 text-sm"
+                            placeholder="Téléphone Mobile Money (+237 6XX XX XX XX)"
+                            value={data.customer_phone}
+                            onChange={(e) => setData('customer_phone', e.target.value)}
+                        />
                         <select
                             className="w-full rounded-xl border-slate-300 text-sm"
                             value={data.provider}
                             onChange={(e) => setData('provider', e.target.value)}
                         >
-                            <option value="fapshi">Fapshi (primaire)</option>
+                            <option value="camerpay">CamerPay (Orange / MTN / carte)</option>
+                            <option value="fapshi">Fapshi</option>
                             <option value="cinetpay">CinetPay</option>
                         </select>
                         <button

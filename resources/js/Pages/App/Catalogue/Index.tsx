@@ -17,7 +17,9 @@ type Props = {
         links: Array<{ url: string | null; label: string; active: boolean }>;
     };
     rubriques: Array<{ id: number; code: string; name: string; articles_count: number }>;
-    filters: { q: string; rubrique?: string; favorites?: boolean };
+    filters: { q: string; rubrique?: string; favorites?: boolean; year: number };
+    years: number[];
+    activeYear: number;
     favoriteIds: number[];
     stats: { total: number; rubriques: number; favorites: number };
     searchDriver?: string;
@@ -31,20 +33,27 @@ export default function CatalogueIndex({
     articles,
     rubriques,
     filters,
+    years,
+    activeYear,
     favoriteIds,
     stats,
     searchDriver = 'sql',
 }: Props) {
     const [q, setQ] = useState(filters.q || '');
+    const year = filters.year;
     const favSet = new Set(favoriteIds);
+
+    const query = (extra: Record<string, string | number | undefined> = {}) => ({
+        q,
+        year,
+        rubrique: filters.rubrique,
+        favorites: filters.favorites ? 1 : undefined,
+        ...extra,
+    });
 
     const search = (e: FormEvent) => {
         e.preventDefault();
-        router.get(
-            route('app.catalogue.index'),
-            { q, rubrique: filters.rubrique, favorites: filters.favorites ? 1 : undefined },
-            { preserveState: true },
-        );
+        router.get(route('app.catalogue.index'), query(), { preserveState: true });
     };
 
     const toggleFavorite = (id: number, isFav: boolean) => {
@@ -56,13 +65,20 @@ export default function CatalogueIndex({
     };
 
     return (
-        <AppLayout title="Catalogue mercuriale">
-            <Head title="Catalogue mercuriale 2026" />
+        <AppLayout title={`Mercuriale ${year}`}>
+            <Head title={`Catalogue mercuriale ${year}`} />
             <div className="space-y-6">
                 <section className="rounded-2xl border border-emerald-900/10 bg-white p-5">
                     <div className="flex flex-wrap items-end justify-between gap-4">
                         <div>
-                            <h2 className="text-xl font-semibold">Mercuriale MINCOMMERCE 2026</h2>
+                            <h2 className="text-xl font-semibold">
+                                Mercuriale MINCOMMERCE {year}
+                                {year === activeYear && (
+                                    <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                                        année active
+                                    </span>
+                                )}
+                            </h2>
                             <p className="mt-1 text-sm text-slate-600">
                                 {stats.total.toLocaleString('fr-FR')} articles · {stats.rubriques}{' '}
                                 rubriques · {stats.favorites} favoris
@@ -71,11 +87,30 @@ export default function CatalogueIndex({
                                 </span>
                             </p>
                         </div>
-                        <form onSubmit={search} className="flex gap-2">
+                        <form onSubmit={search} className="flex flex-wrap gap-2">
+                            {years.length > 1 && (
+                                <select
+                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    value={year}
+                                    onChange={(e) =>
+                                        router.get(
+                                            route('app.catalogue.index'),
+                                            query({ year: Number(e.target.value), rubrique: undefined }),
+                                            { preserveState: true },
+                                        )
+                                    }
+                                >
+                                    {years.map((y) => (
+                                        <option key={y} value={y}>
+                                            Budget {y}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                             <input
                                 value={q}
                                 onChange={(e) => setQ(e.target.value)}
-                                placeholder="Reference ou designation..."
+                                placeholder="Référence ou désignation..."
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                             />
                             <button className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-medium text-white">
@@ -85,13 +120,13 @@ export default function CatalogueIndex({
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                         <Link
-                            href={route('app.catalogue.index', { q })}
+                            href={route('app.catalogue.index', query({ rubrique: undefined, favorites: undefined }))}
                             className={`rounded-full px-3 py-1 text-xs ${!filters.rubrique && !filters.favorites ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-700'}`}
                         >
                             Tous
                         </Link>
                         <Link
-                            href={route('app.catalogue.index', { q, favorites: 1 })}
+                            href={route('app.catalogue.index', query({ favorites: 1, rubrique: undefined }))}
                             className={`rounded-full px-3 py-1 text-xs ${filters.favorites ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700'}`}
                         >
                             Favoris ({stats.favorites})
@@ -99,7 +134,7 @@ export default function CatalogueIndex({
                         {rubriques.slice(0, 12).map((r) => (
                             <Link
                                 key={r.code}
-                                href={route('app.catalogue.index', { q, rubrique: r.code })}
+                                href={route('app.catalogue.index', query({ rubrique: r.code, favorites: undefined }))}
                                 className={`rounded-full px-3 py-1 text-xs ${filters.rubrique === r.code ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-700'}`}
                             >
                                 {r.code} ({r.articles_count})
@@ -112,14 +147,21 @@ export default function CatalogueIndex({
                     <table className="min-w-full text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
-                                <th className="px-4 py-3">Reference</th>
-                                <th className="px-4 py-3">Designation</th>
-                                <th className="px-4 py-3">Unite</th>
+                                <th className="px-4 py-3">Référence</th>
+                                <th className="px-4 py-3">Désignation</th>
+                                <th className="px-4 py-3">Unité</th>
                                 <th className="px-4 py-3 text-right">Prix</th>
                                 <th className="px-4 py-3"></th>
                             </tr>
                         </thead>
                         <tbody>
+                            {articles.data.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                                        Aucun article pour {year}.
+                                    </td>
+                                </tr>
+                            )}
                             {articles.data.map((a) => {
                                 const isFav = favSet.has(a.id);
                                 return (
@@ -135,7 +177,7 @@ export default function CatalogueIndex({
                                         <td className="px-4 py-3 text-right font-medium">
                                             {money(a.unit_price)}
                                         </td>
-                                        <td className="px-4 py-3 text-right space-x-3">
+                                        <td className="space-x-3 px-4 py-3 text-right">
                                             <button
                                                 type="button"
                                                 onClick={() => toggleFavorite(a.id, isFav)}
@@ -164,7 +206,7 @@ export default function CatalogueIndex({
                                 key={i}
                                 disabled={!l.url}
                                 onClick={() => l.url && router.get(l.url)}
-                                className={`rounded px-2 py-1 text-xs ${l.active ? 'bg-emerald-800 text-white' : 'bg-slate-100'}`}
+                                className={`rounded-sm px-2 py-1 text-xs ${l.active ? 'bg-emerald-800 text-white' : 'bg-slate-100'}`}
                                 dangerouslySetInnerHTML={{ __html: l.label }}
                             />
                         ))}

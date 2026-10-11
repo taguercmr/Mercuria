@@ -9,6 +9,10 @@ n° **{{ $document->number }}**
 @endif
 d'un montant total de **{{ number_format($document->total, 0, ',', ' ') }} {{ $document->currency }}**.
 
+@if($document->ir_mode === 'withholding' && $document->ir_amount > 0)
+Après retenue IR, le **net à payer est de {{ number_format($document->net_total, 0, ',', ' ') }} {{ $document->currency }}**.
+@endif
+
 @if($customMessage)
 {{ $customMessage }}
 @endif

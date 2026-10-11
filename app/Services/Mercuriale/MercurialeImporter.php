@@ -67,14 +67,12 @@ class MercurialeImporter
     ];
 
     /**
-     * @return array{articles:int, rubriques:int, familles:int, skipped:int}
+     * @return array{articles:int, rubriques:int, familles:int, skipped:int, year:int}
      */
-    public function importFromText(string $text, bool $fresh = false): array
+    public function importFromText(string $text, bool $fresh = false, int $year = 2026): array
     {
         if ($fresh) {
-            DB::table('mercuriale_articles')->delete();
-            DB::table('mercuriale_familles')->delete();
-            DB::table('mercuriale_rubriques')->delete();
+            MercurialeArticle::query()->where('budget_year', $year)->delete();
         }
 
         $this->seedRubriques();
@@ -120,8 +118,8 @@ class MercurialeImporter
                 'unit' => $row['unit'],
                 'quantity' => $row['quantity'],
                 'unit_price' => $row['unit_price'],
-                'budget_year' => 2026,
-                'source' => 'MINCOMMERCE/SYGEP',
+                'budget_year' => $year,
+                'source' => 'MINCOMMERCE/SYGEP '.$year,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -129,8 +127,8 @@ class MercurialeImporter
             if (count($batch) >= 500) {
                 MercurialeArticle::query()->upsert(
                     $batch,
-                    ['reference'],
-                    ['rubrique_id', 'famille_id', 'article_code', 'designation', 'unit', 'quantity', 'unit_price', 'budget_year', 'source', 'updated_at'],
+                    ['reference', 'budget_year'],
+                    ['rubrique_id', 'famille_id', 'article_code', 'designation', 'unit', 'quantity', 'unit_price', 'source', 'updated_at'],
                 );
                 $batch = [];
             }
@@ -139,18 +137,19 @@ class MercurialeImporter
         if ($batch !== []) {
             MercurialeArticle::query()->upsert(
                 $batch,
-                ['reference'],
-                ['rubrique_id', 'famille_id', 'article_code', 'designation', 'unit', 'quantity', 'unit_price', 'budget_year', 'source', 'updated_at'],
+                ['reference', 'budget_year'],
+                ['rubrique_id', 'famille_id', 'article_code', 'designation', 'unit', 'quantity', 'unit_price', 'source', 'updated_at'],
             );
         }
 
         $this->refreshCounts();
 
         return [
-            'articles' => MercurialeArticle::query()->count(),
+            'articles' => MercurialeArticle::query()->where('budget_year', $year)->count(),
             'rubriques' => MercurialeRubrique::query()->count(),
             'familles' => MercurialeFamille::query()->count(),
             'skipped' => $skipped,
+            'year' => $year,
         ];
     }
 

@@ -6,18 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentTransaction;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\Tenant;
 use App\Notifications\SubscriptionActivatedNotification;
 use App\Services\Payments\PaymentManager;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 
 class PaymentWebhookController extends Controller
 {
     public function __construct(private readonly PaymentManager $payments) {}
+
+    public function camerpay(Request $request): Response
+    {
+        return $this->handle($request, 'camerpay');
+    }
 
     public function fapshi(Request $request): Response
     {
@@ -43,56 +49,66 @@ class PaymentWebhookController extends Controller
             DB::transaction(function () use ($status, $provider, &$activated): void {
                 $tx = PaymentTransaction::query()
                     ->where('provider', $provider)
-                    ->where(function ($q) use ($status): void {
-                        $q->where('provider_trans_id', $status->providerTransId);
-
-                        if ($status->externalId) {
-                            $q->orWhere('external_id', $status->externalId);
-                        }
-                    })
+                    ->when($status->externalId,
+                        fn ($query) => $query->where('external_id', $status->externalId),
+                        fn ($query) => $query->where('provider_trans_id', $status->providerTransId))
                     ->lockForUpdate()
                     ->first();
 
-                if (! $tx || $tx->status === 'paid') {
+                if (! $tx || $status->providerTransId === ''
+                    || ($tx->provider_trans_id && $tx->provider_trans_id !== $status->providerTransId)
+                    || ($status->externalId && $tx->external_id !== $status->externalId)
+                    || $status->amount === null || $status->amount <= 0
+                    || (int) $tx->amount !== $status->amount
+                    || ($provider === 'camerpay' && $tx->currency !== 'XAF')
+                    || ($status->currency !== null && $status->currency !== $tx->currency)) {
+                    throw new RuntimeException('Payment does not match the expected transaction.');
+                }
+
+                if ($tx->status === 'paid') {
                     return;
                 }
 
-                $tx->update([
-                    'status' => 'paid',
-                    'provider_trans_id' => $status->providerTransId ?: $tx->provider_trans_id,
-                    'paid_at' => now(),
-                    'meta' => array_merge($tx->meta ?? [], ['webhook' => $status->raw]),
-                ]);
-
-                $tenant = $tx->tenant;
+                $tenant = Tenant::query()->lockForUpdate()->find($tx->tenant_id);
                 $plan = Plan::query()->where('code', 'pro')->first();
 
-                if ($plan && $tenant) {
-                    $cycle = data_get($tx->meta, 'billing_cycle', 'monthly');
-                    $endsAt = $cycle === 'yearly'
-                        ? Carbon::now()->addYear()
-                        : Carbon::now()->addMonth();
-
-                    $subscription = Subscription::query()->create([
-                        'tenant_id' => $tenant->id,
-                        'plan_id' => $plan->id,
-                        'status' => 'active',
-                        'billing_cycle' => $cycle,
-                        'provider' => $provider,
-                        'starts_at' => now(),
-                        'ends_at' => $endsAt,
-                    ]);
-
-                    $tx->update(['subscription_id' => $subscription->id]);
-
-                    $tenant->update([
-                        'plan' => 'pro',
-                        'subscribed_at' => now(),
-                        'subscription_ends_at' => $endsAt,
-                    ]);
-
-                    $activated = ['tenant' => $tenant->fresh(), 'ends_at' => $endsAt];
+                if (! $plan || ! $tenant) {
+                    throw new RuntimeException('Subscription configuration unavailable.');
                 }
+
+                $cycle = data_get($tx->meta, 'billing_cycle', 'monthly');
+                if (! in_array($cycle, ['monthly', 'yearly'], true)) {
+                    throw new RuntimeException('Invalid billing cycle.');
+                }
+                $startsAt = $tenant->isPaid() ? $tenant->subscription_ends_at->copy() : now();
+                $endsAt = $cycle === 'yearly'
+                    ? $startsAt->copy()->addYearNoOverflow()
+                    : $startsAt->copy()->addMonthNoOverflow();
+
+                $subscription = Subscription::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'active',
+                    'billing_cycle' => $cycle,
+                    'provider' => $provider,
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                ]);
+
+                $tx->update([
+                    'subscription_id' => $subscription->id,
+                    'status' => 'paid',
+                    'provider_trans_id' => $status->providerTransId,
+                    'paid_at' => now(),
+                ]);
+
+                $tenant->update([
+                    'plan' => 'pro',
+                    'subscribed_at' => $tenant->subscribed_at ?? now(),
+                    'subscription_ends_at' => $endsAt,
+                ]);
+
+                $activated = ['tenant' => $tenant->fresh(), 'ends_at' => $endsAt];
             });
 
             if ($activated) {

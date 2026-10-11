@@ -1,4 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
+import DesignPicker from '@/Components/Documents/DesignPicker';
+import DocumentWhatsAppShare from '@/Components/Documents/DocumentWhatsAppShare';
+import DocumentPreview, { DocumentDesigns } from '@/Components/Documents/DocumentPreview';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 
@@ -6,16 +9,16 @@ type Props = {
     document: any;
     types: Record<string, string>;
     tenant: any;
+    designs: DocumentDesigns;
+    emailSender?: { address: string; name: string; reply_to: string };
 };
 
-function money(n: number, currency = 'XAF') {
-    return `${new Intl.NumberFormat('fr-FR').format(n)} ${currency}`;
-}
-
-export default function DocumentShow({ document, types, tenant }: Props) {
-    const { flash } = usePage().props as { flash?: { success?: string; error?: string } };
+export default function DocumentShow({ document, types, tenant, designs, emailSender }: Props) {
+    const { flash, auth } = usePage().props as { flash?: { success?: string; error?: string }; auth?: { user?: { can_write?: boolean } } };
+    const designForm = useForm({ design: document.design ?? 'signature' });
     const [showSend, setShowSend] = useState(false);
     const [showTemplate, setShowTemplate] = useState(false);
+    const [showWhatsApp, setShowWhatsApp] = useState(false);
 
     const sendForm = useForm({
         email: document.client?.email ?? '',
@@ -77,15 +80,22 @@ export default function DocumentShow({ document, types, tenant }: Props) {
                         href={route('app.documents.pdf', document.id)}
                         className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white"
                     >
-                        PDF
+                        Télécharger PDF
                     </a>
-                    <button
+                    {auth?.user?.can_write && <button
                         type="button"
-                        onClick={() => setShowSend(true)}
+                        onClick={() => { setShowSend(true); setShowWhatsApp(false); }}
                         className="rounded-xl bg-emerald-800 px-4 py-2 text-sm text-white"
                     >
                         Envoyer par email
-                    </button>
+                    </button>}
+                    {auth?.user?.can_write && <button
+                        type="button"
+                        onClick={() => { setShowWhatsApp(true); setShowSend(false); }}
+                        className="rounded-xl border border-emerald-700 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+                    >
+                        Partager sur WhatsApp
+                    </button>}
                     <button
                         type="button"
                         onClick={() => setShowTemplate(true)}
@@ -128,13 +138,31 @@ export default function DocumentShow({ document, types, tenant }: Props) {
                 </div>
             </div>
 
-            {showSend && (
+            {auth?.user?.can_write && <details className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-emerald-800">Changer le design · {designs[designForm.data.design]?.name}</summary>
+                <form className="mt-5" onSubmit={(event) => { event.preventDefault(); designForm.patch(route('app.documents.design', document.id), { preserveScroll: true }); }}>
+                    <DesignPicker designs={designs} value={designForm.data.design} onChange={(key) => designForm.setData('design', key)} disabled={designForm.processing} />
+                    {designForm.errors.design && <p role="alert" className="mt-3 text-sm text-red-700">{designForm.errors.design}</p>}
+                    <div className="mt-5 flex flex-wrap items-center justify-end gap-3"><span className="text-xs text-slate-500">L’aperçu se met à jour dès votre sélection.</span><button type="submit" disabled={designForm.processing || designForm.data.design === document.design} className="rounded-lg bg-emerald-800 px-4 py-2 text-sm text-white disabled:opacity-50">{designForm.processing ? 'Enregistrement…' : 'Appliquer ce design au PDF'}</button></div>
+                </form>
+            </details>}
+
+            {showWhatsApp && auth?.user?.can_write && <DocumentWhatsAppShare key={document.id} documentId={document.id} clientPhone={document.client?.phone} onClose={() => setShowWhatsApp(false)} />}
+
+            {showSend && auth?.user?.can_write && (
                 <form
                     onSubmit={send}
                     className="mb-4 space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
                 >
                     <h3 className="font-medium">Envoyer le PDF</h3>
+                    {emailSender && <div className="rounded-xl bg-white/80 p-3 text-sm text-slate-600">
+                        <p className="break-words"><strong>Expéditeur :</strong> {emailSender.name} &lt;{emailSender.address}&gt;</p>
+                        <p className="mt-1 break-words"><strong>Les réponses arriveront à :</strong> {emailSender.reply_to}</p>
+                        <Link href={route('app.settings.edit')} className="mt-2 inline-block text-xs text-emerald-800 underline underline-offset-4">Modifier l’email de l’entreprise</Link>
+                    </div>}
+                    <label htmlFor="document-recipient" className="block text-sm font-medium">Email destinataire</label>
                     <input
+                        id="document-recipient"
                         type="email"
                         className="w-full rounded-xl border-slate-300 text-sm"
                         placeholder="Email destinataire"
@@ -142,13 +170,17 @@ export default function DocumentShow({ document, types, tenant }: Props) {
                         onChange={(e) => sendForm.setData('email', e.target.value)}
                         required
                     />
+                    {sendForm.errors.email && <p role="alert" className="text-sm text-red-700">{sendForm.errors.email}</p>}
+                    <label htmlFor="document-email-message" className="block text-sm font-medium">Message (optionnel)</label>
                     <textarea
+                        id="document-email-message"
                         className="w-full rounded-xl border-slate-300 text-sm"
                         rows={3}
                         placeholder="Message (optionnel)"
                         value={sendForm.data.message}
                         onChange={(e) => sendForm.setData('message', e.target.value)}
                     />
+                    {sendForm.errors.message && <p role="alert" className="text-sm text-red-700">{sendForm.errors.message}</p>}
                     <div className="flex gap-2">
                         <button
                             disabled={sendForm.processing}
@@ -197,67 +229,7 @@ export default function DocumentShow({ document, types, tenant }: Props) {
                 </form>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 grid gap-4 md:grid-cols-2">
-                    <div>
-                        <div className="text-lg font-semibold text-emerald-800">
-                            {tenant?.name ?? 'Mercuria'}
-                        </div>
-                        {tenant?.letterhead && (
-                            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
-                                {tenant.letterhead}
-                            </p>
-                        )}
-                    </div>
-                    <div className="text-sm text-slate-600 md:text-right">
-                        <div>Client : {document.client?.name ?? '—'}</div>
-                        <div>Statut : {document.status}</div>
-                        <div>Date : {document.issue_date ?? '—'}</div>
-                    </div>
-                </div>
-
-                <table className="min-w-full text-sm">
-                    <thead className="border-y border-slate-200 text-left text-xs uppercase text-slate-500">
-                        <tr>
-                            <th className="py-2">Ref</th>
-                            <th className="py-2">Designation</th>
-                            <th className="py-2">Qte</th>
-                            <th className="py-2">P.U.</th>
-                            <th className="py-2 text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {document.lines?.map((l: any) => (
-                            <tr key={l.id} className="border-b border-slate-100">
-                                <td className="py-2 font-mono text-xs">{l.reference}</td>
-                                <td className="py-2">{l.designation}</td>
-                                <td className="py-2">
-                                    {l.quantity} {l.unit}
-                                </td>
-                                <td className="py-2">{money(l.unit_price, document.currency)}</td>
-                                <td className="py-2 text-right">
-                                    {money(l.line_total, document.currency)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                <div className="mt-6 text-right">
-                    <div className="text-sm text-slate-500">
-                        Sous-total : {money(document.subtotal, document.currency)}
-                    </div>
-                    <div className="text-xl font-semibold">
-                        Total : {money(document.total, document.currency)}
-                    </div>
-                </div>
-
-                {tenant?.footer_text && (
-                    <p className="mt-8 border-t border-slate-100 pt-4 text-xs text-slate-500">
-                        {tenant.footer_text}
-                    </p>
-                )}
-            </div>
+            <DocumentPreview document={{ ...document, design: designForm.data.design }} tenant={tenant} types={types} designs={designs} />
         </AppLayout>
     );
 }

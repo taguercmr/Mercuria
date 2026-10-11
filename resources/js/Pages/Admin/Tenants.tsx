@@ -86,12 +86,13 @@ export default function AdminTenants({ tenants, filters, plans }: Props) {
                     </button>
                 </form>
 
-                <div className="overflow-hidden rounded-2xl border border-white/10">
+                <div className="overflow-x-auto rounded-2xl border border-white/10">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b border-white/10 bg-white/5 text-xs uppercase text-slate-400">
                             <tr>
                                 <th className="px-4 py-3">Organisation</th>
                                 <th className="px-4 py-3">Plan</th>
+                                <th className="px-4 py-3">Fin d’abonnement</th>
                                 <th className="px-4 py-3">Users</th>
                                 <th className="px-4 py-3">Actif</th>
                                 <th className="px-4 py-3">Actions</th>
@@ -120,6 +121,12 @@ export default function AdminTenants({ tenants, filters, plans }: Props) {
                                                 </option>
                                             ))}
                                         </select>
+                                        <p className="mt-1 text-xs text-slate-400">Une activation Pro manuelle accorde un mois.</p>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">
+                                        {t.subscription_ends_at
+                                            ? new Date(t.subscription_ends_at).toLocaleString('fr-FR')
+                                            : t.plan === 'pro' ? 'Échéance manquante : API bloquée' : '—'}
                                     </td>
                                     <td className="px-4 py-3">{t.users_count}</td>
                                     <td className="px-4 py-3">

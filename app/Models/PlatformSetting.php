@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class PlatformSetting extends Model
 {
@@ -10,9 +12,17 @@ class PlatformSetting extends Model
 
     public static function getValue(string $key, mixed $default = null): mixed
     {
-        $row = static::query()->where('key', $key)->first();
+        try {
+            if (! Schema::hasTable('platform_settings')) {
+                return $default;
+            }
 
-        return $row?->value ?? $default;
+            $row = static::query()->where('key', $key)->first();
+
+            return $row?->value ?? $default;
+        } catch (Throwable) {
+            return $default;
+        }
     }
 
     public static function setValue(string $key, mixed $value): void
