@@ -5,10 +5,12 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Client;
+use App\Services\Billing\PlanQuotaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClientController extends Controller
@@ -82,9 +84,18 @@ class ClientController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, PlanQuotaService $quotas): RedirectResponse
     {
         $this->authorize('create', Client::class);
+
+        $tenant = $request->user()->currentTenant;
+        abort_unless($tenant, 403);
+
+        try {
+            $quotas->ensureClientQuota($tenant, $request->user());
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $data = $this->validated($request);
         $client = Client::query()->create($data);

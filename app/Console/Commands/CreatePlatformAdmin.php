@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\Auth\AdminWorkspaceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
@@ -13,7 +14,7 @@ class CreatePlatformAdmin extends Command
 
     protected $description = 'Create a platform administrator with a password entered securely';
 
-    public function handle(): int
+    public function handle(AdminWorkspaceService $adminWorkspaces): int
     {
         if (! $this->input->isInteractive()) {
             $this->error('Interactive password entry is required.');
@@ -60,6 +61,8 @@ class CreatePlatformAdmin extends Command
             $user->email_verified_at = now();
             $user->save();
         }
+
+        $adminWorkspaces->ensure($user);
 
         $this->info('Administrator saved.');
 

@@ -217,7 +217,7 @@ class DocumentSharingTest extends TestCase
     private function document(): array
     {
         $user = User::factory()->create();
-        $tenant = Tenant::query()->create(['name' => 'Entreprise Démo', 'email' => 'contact@example.com', 'plan' => 'pro', 'currency' => 'XAF', 'is_active' => true, 'onboarding_completed' => true]);
+        $tenant = Tenant::query()->create(['name' => 'Entreprise Démo', 'email' => 'contact@example.com', 'plan' => 'pro', 'currency' => 'XAF', 'is_active' => true, 'onboarding_completed' => true, 'subscribed_at' => now(), 'subscription_ends_at' => now()->addMonth()]);
         $tenant->users()->attach($user, ['role' => 'owner']);
         $user->forceFill(['current_tenant_id' => $tenant->id])->save();
         $client = Client::query()->create(['tenant_id' => $tenant->id, 'name' => 'Client Démo', 'email' => 'client@example.com']);

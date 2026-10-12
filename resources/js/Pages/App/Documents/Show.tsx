@@ -11,9 +11,10 @@ type Props = {
     tenant: any;
     designs: DocumentDesigns;
     emailSender?: { address: string; name: string; reply_to: string };
+    canSendEmail: boolean;
 };
 
-export default function DocumentShow({ document, types, tenant, designs, emailSender }: Props) {
+export default function DocumentShow({ document, types, tenant, designs, emailSender, canSendEmail }: Props) {
     const { flash, auth } = usePage().props as { flash?: { success?: string; error?: string }; auth?: { user?: { can_write?: boolean } } };
     const designForm = useForm({ design: document.design ?? 'signature' });
     const [showSend, setShowSend] = useState(false);
@@ -82,13 +83,18 @@ export default function DocumentShow({ document, types, tenant, designs, emailSe
                     >
                         Télécharger PDF
                     </a>
-                    {auth?.user?.can_write && <button
-                        type="button"
-                        onClick={() => { setShowSend(true); setShowWhatsApp(false); }}
-                        className="rounded-xl bg-emerald-800 px-4 py-2 text-sm text-white"
-                    >
-                        Envoyer par email
-                    </button>}
+                    {auth?.user?.can_write && (canSendEmail ? <button
+                            type="button"
+                            onClick={() => { setShowSend(true); setShowWhatsApp(false); }}
+                            className="rounded-xl bg-emerald-800 px-4 py-2 text-sm text-white"
+                        >
+                            Envoyer par email
+                        </button> : <Link
+                            href={route('app.subscription.show')}
+                            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900"
+                        >
+                            Envoi email · Pro
+                        </Link>)}
                     {auth?.user?.can_write && <button
                         type="button"
                         onClick={() => { setShowWhatsApp(true); setShowSend(false); }}
@@ -149,7 +155,7 @@ export default function DocumentShow({ document, types, tenant, designs, emailSe
 
             {showWhatsApp && auth?.user?.can_write && <DocumentWhatsAppShare key={document.id} documentId={document.id} clientPhone={document.client?.phone} onClose={() => setShowWhatsApp(false)} />}
 
-            {showSend && auth?.user?.can_write && (
+            {showSend && canSendEmail && auth?.user?.can_write && (
                 <form
                     onSubmit={send}
                     className="mb-4 space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"

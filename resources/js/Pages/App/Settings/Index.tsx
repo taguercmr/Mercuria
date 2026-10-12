@@ -23,9 +23,11 @@ type Tenant = {
 export default function SettingsIndex({
     tenant,
     canWrite = true,
+    hasAdvancedCustomization = false,
 }: {
     tenant: Tenant | null;
     canWrite?: boolean;
+    hasAdvancedCustomization?: boolean;
 }) {
     const { flash } = usePage().props as { flash?: { success?: string } };
     const { data, setData, post, processing } = useForm({
@@ -58,7 +60,7 @@ export default function SettingsIndex({
                 <div>
                     <h2 className="text-xl font-semibold">Identité de l&apos;organisation</h2>
                     <p className="mt-1 text-sm text-slate-600">
-                        Logo, en-tête et pied de page apparaissent sur vos devis et factures PDF.
+                        Le plan Gratuit inclut les coordonnées, la devise et les designs standards.
                     </p>
                 </div>
                 <Link
@@ -127,9 +129,13 @@ export default function SettingsIndex({
                 </section>
 
                 <section className="space-y-4 border-t border-slate-100 pt-6">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                        Documents PDF
-                    </h3>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                            Personnalisation complète des PDF
+                        </h3>
+                        {!hasAdvancedCustomization && <Link href={route('app.subscription.show')} className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">Disponible avec Pro</Link>}
+                    </div>
+                    {!hasAdvancedCustomization && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Le logo, l’en-tête personnalisé, le pied de page et la signature sont inclus dans le plan Pro.</p>}
                     <div>
                         <InputLabel value="En-tête (letterhead)" />
                         <textarea
@@ -137,7 +143,7 @@ export default function SettingsIndex({
                             rows={4}
                             value={data.letterhead}
                             onChange={(e) => setData('letterhead', e.target.value)}
-                            disabled={!canWrite}
+                            disabled={!canWrite || !hasAdvancedCustomization}
                             placeholder="Adresse, NIU, mentions légales..."
                         />
                     </div>
@@ -148,7 +154,7 @@ export default function SettingsIndex({
                             rows={3}
                             value={data.footer_text}
                             onChange={(e) => setData('footer_text', e.target.value)}
-                            disabled={!canWrite}
+                            disabled={!canWrite || !hasAdvancedCustomization}
                             placeholder="Conditions de paiement, merci de votre confiance..."
                         />
                     </div>
@@ -166,7 +172,7 @@ export default function SettingsIndex({
                                 type="file"
                                 accept="image/*"
                                 className="mt-1 block w-full text-sm"
-                                disabled={!canWrite}
+                                disabled={!canWrite || !hasAdvancedCustomization}
                                 onChange={(e) => setData('logo', e.target.files?.[0] ?? null)}
                             />
                         </div>
@@ -183,7 +189,7 @@ export default function SettingsIndex({
                                 type="file"
                                 accept="image/*"
                                 className="mt-1 block w-full text-sm"
-                                disabled={!canWrite}
+                                disabled={!canWrite || !hasAdvancedCustomization}
                                 onChange={(e) => setData('signature', e.target.files?.[0] ?? null)}
                             />
                         </div>

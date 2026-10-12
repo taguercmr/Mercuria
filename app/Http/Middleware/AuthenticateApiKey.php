@@ -33,7 +33,7 @@ class AuthenticateApiKey
         }
 
         try {
-            $this->quotas->ensureApiAccess($tenant);
+            $this->quotas->ensureApiAccess($tenant, $apiKey->user);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 402);
         }

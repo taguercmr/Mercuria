@@ -120,7 +120,7 @@ class DocumentController extends Controller
         abort_unless($tenant, 403);
 
         try {
-            $quotas->ensureDocumentQuota($tenant);
+            $quotas->ensureDocumentQuota($tenant, $request->user());
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -150,7 +150,7 @@ class DocumentController extends Controller
 
             $this->syncLines($document, $data['lines'] ?? []);
             $document->recalculateTotals();
-            $quotas->trackDocumentCreated($tenant);
+            $quotas->trackDocumentCreated($tenant, $request->user());
 
             return $document;
         });
@@ -166,7 +166,7 @@ class DocumentController extends Controller
             ->with('success', 'Document enregistré.');
     }
 
-    public function show(Request $request, Document $document): InertiaResponse
+    public function show(Request $request, Document $document, PlanQuotaService $quotas): InertiaResponse
     {
         $this->authorize('view', $document);
 
@@ -182,6 +182,9 @@ class DocumentController extends Controller
                 'name' => $tenant?->name.' via Mercuria',
                 'reply_to' => $tenant?->email ?: $request->user()->email,
             ],
+            'canSendEmail' => $tenant
+                ? $quotas->canSendEmail($tenant, $request->user())
+                : false,
             'tenant' => $tenant?->only([
                 'name', 'email', 'phone', 'logo_path', 'letterhead', 'footer_text', 'signature_path', 'currency',
             ]),
@@ -205,13 +208,19 @@ class DocumentController extends Controller
         return $pdf->download($filename);
     }
 
-    public function send(Request $request, Document $document): RedirectResponse
+    public function send(Request $request, Document $document, PlanQuotaService $quotas): RedirectResponse
     {
         $this->authorize('send', $document);
 
         $document->load(['client', 'lines']);
         $tenant = $document->tenant()->first();
         abort_unless($tenant, 403);
+
+        try {
+            $quotas->ensureEmailSending($tenant, $request->user());
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $data = $request->validate([
             'email' => ['nullable', 'email'],
@@ -379,7 +388,7 @@ class DocumentController extends Controller
         abort_unless($tenant, 403);
 
         try {
-            $quotas->ensureDocumentQuota($tenant);
+            $quotas->ensureDocumentQuota($tenant, $request->user());
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -420,7 +429,7 @@ class DocumentController extends Controller
             }
 
             $copy->recalculateTotals();
-            $quotas->trackDocumentCreated($tenant);
+            $quotas->trackDocumentCreated($tenant, $request->user());
 
             return $copy;
         });

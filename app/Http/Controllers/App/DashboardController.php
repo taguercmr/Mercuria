@@ -43,7 +43,7 @@ class DashboardController extends Controller
                 'plan' => $tenant->plan,
                 'currency' => $currency,
             ] : null,
-            'usage' => $tenant ? $quotas->usageSummary($tenant) : null,
+            'usage' => $tenant ? $quotas->usageSummary($tenant, auth()->user()) : null,
             'onboarding' => $onboarding,
             'mercurialeYear' => $years->active(),
             'stats' => [

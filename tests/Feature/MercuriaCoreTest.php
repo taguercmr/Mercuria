@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Mail\DocumentSentMail;
 use App\Mail\TeamInvitationMail;
 use App\Models\ApiKey;
+use App\Models\Client;
 use App\Models\Document;
 use App\Models\MercurialeArticle;
 use App\Models\MercurialeFamille;
@@ -103,9 +105,8 @@ class MercuriaCoreTest extends TestCase
     public function test_document_quota_blocks_free_plan_over_limit(): void
     {
         [$user, $tenant] = $this->actingTenantOwner('free');
-        $limit = (int) config('mercuria.plans.free.documents_per_month');
         $tenant->forceFill([
-            'documents_used_month' => $limit,
+            'documents_used_month' => 3,
             'usage_month' => now()->format('Y-m'),
         ])->save();
 
@@ -152,6 +153,98 @@ class MercuriaCoreTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('documents', ['title' => 'Devis OK', 'type' => 'quote']);
+    }
+
+    public function test_free_plan_blocks_a_third_client(): void
+    {
+        [$user, $tenant] = $this->actingTenantOwner('free');
+        Client::query()->create(['tenant_id' => $tenant->id, 'name' => 'Client A']);
+        Client::query()->create(['tenant_id' => $tenant->id, 'name' => 'Client B']);
+
+        $response = $this->actingAs($user)->post(route('app.clients.store'), [
+            'name' => 'Client C',
+            'email' => 'client-c@example.com',
+        ]);
+
+        $response->assertRedirect()->assertSessionHas('error');
+        $this->assertDatabaseMissing('clients', ['tenant_id' => $tenant->id, 'name' => 'Client C']);
+    }
+
+    public function test_free_plan_can_export_pdf_but_cannot_send_it_by_email(): void
+    {
+        Mail::fake();
+        [$user, $tenant] = $this->actingTenantOwner('free');
+        $document = Document::query()->create([
+            'tenant_id' => $tenant->id,
+            'created_by' => $user->id,
+            'type' => 'quote',
+            'status' => 'draft',
+            'currency' => 'XAF',
+            'title' => 'Devis gratuit',
+            'tax_rate' => 0,
+            'issue_date' => now()->toDateString(),
+        ]);
+        $document->lines()->create([
+            'designation' => 'Article',
+            'quantity' => 1,
+            'unit_price' => 1000,
+            'line_total' => 1000,
+            'position' => 0,
+        ]);
+
+        $this->actingAs($user)->get(route('app.documents.pdf', $document))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->post(route('app.documents.send', $document), ['email' => 'client@example.com'])
+            ->assertRedirect()
+            ->assertSessionHas('error', "L'envoi par email est réservé au plan Pro. L'export PDF reste disponible.");
+
+        Mail::assertNotSent(DocumentSentMail::class);
+        $this->assertSame('draft', $document->fresh()->status);
+    }
+
+    public function test_free_plan_cannot_change_advanced_pdf_branding(): void
+    {
+        [$user, $tenant] = $this->actingTenantOwner('free');
+
+        $this->actingAs($user)->post(route('app.settings.update'), [
+            'name' => 'Cabinet renommé',
+            'email' => $tenant->email,
+            'phone' => '600000000',
+            'currency' => 'XAF',
+            'letterhead' => 'En-tête non autorisé',
+            'footer_text' => 'Pied non autorisé',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $tenant->refresh();
+        $this->assertSame('Cabinet renommé', $tenant->name);
+        $this->assertNull($tenant->letterhead);
+        $this->assertNull($tenant->footer_text);
+    }
+
+    public function test_platform_admin_receives_a_workspace_and_all_entitlements_without_payment(): void
+    {
+        $admin = User::factory()->create(['is_platform_admin' => true, 'current_tenant_id' => null]);
+
+        $this->post(route('login'), ['email' => $admin->email, 'password' => 'password'])
+            ->assertRedirect(route('dashboard'));
+
+        $admin->refresh();
+        $this->assertNotNull($admin->currentTenant);
+        $usage = app(PlanQuotaService::class)->usageSummary($admin->currentTenant, $admin);
+        $this->assertSame('Administrateur', $usage['plan_name']);
+        $this->assertNull($usage['documents_limit']);
+        $this->assertNull($usage['clients_limit']);
+        $this->assertTrue($usage['api_access']);
+        $this->assertTrue($usage['email_sending']);
+        $this->assertTrue($usage['advanced_customization']);
+
+        $this->actingAs($admin)->post(route('app.subscription.checkout'), [
+            'billing_cycle' => 'monthly',
+            'provider' => 'camerpay',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseCount('payment_transactions', 0);
     }
 
     public function test_api_requires_key(): void

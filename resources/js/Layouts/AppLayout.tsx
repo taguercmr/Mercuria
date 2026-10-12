@@ -30,11 +30,13 @@ type TenantOption = {
 function NavLinks({
     onNavigate,
     canWrite,
+    isPlatformAdmin,
 }: {
     onNavigate?: () => void;
     canWrite: boolean;
+    isPlatformAdmin: boolean;
 }) {
-    const items = allNav.filter((item) => canWrite || !item.write);
+    const items = allNav.filter((item) => (canWrite || !item.write) && !(isPlatformAdmin && item.href === '/app/subscription'));
 
     return (
         <>
@@ -124,11 +126,11 @@ export default function AppLayout({
                         </div>
                     )}
                     <nav className="flex flex-1 flex-col gap-1 p-3">
-                        <NavLinks canWrite={canWrite} />
+                        <NavLinks canWrite={canWrite} isPlatformAdmin={Boolean(auth.user?.is_platform_admin)} />
                     </nav>
                     <div className="space-y-3 border-t border-slate-100 p-4 text-xs text-slate-500">
                         <div>
-                            Plan {tenant?.plan ?? 'free'}
+                            {auth.user?.is_platform_admin ? 'Accès administrateur' : `Plan ${tenant?.plan ?? 'free'}`}
                             {auth.user?.tenant_role && (
                                 <span className="ml-1">· {auth.user.tenant_role}</span>
                             )}
@@ -283,7 +285,7 @@ export default function AppLayout({
                             </div>
                         )}
                         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-                            <NavLinks canWrite={canWrite} onNavigate={() => setMobileOpen(false)} />
+                            <NavLinks canWrite={canWrite} isPlatformAdmin={Boolean(auth.user?.is_platform_admin)} onNavigate={() => setMobileOpen(false)} />
                         </nav>
                         <div className="space-y-2 border-t border-slate-100 p-4 text-sm">
                             <div className="text-xs text-slate-500">

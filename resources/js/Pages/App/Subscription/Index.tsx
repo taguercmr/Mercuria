@@ -10,6 +10,7 @@ type Props = {
         documents_limit: number | null;
         api_access: boolean;
         is_paid: boolean;
+        is_platform_admin: boolean;
     };
     plans: any;
     provider: string;
@@ -64,7 +65,10 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
                     </p>
                 </section>
 
-                <section className="rounded-2xl border border-emerald-700/30 bg-emerald-50 p-6">
+                {usage.is_platform_admin ? <section className="rounded-2xl border border-emerald-700/30 bg-emerald-50 p-6">
+                    <h2 className="text-lg font-semibold text-emerald-950">Accès administrateur complet</h2>
+                    <p className="mt-2 text-sm leading-6 text-emerald-900">Documents et clients illimités, envoi par email, personnalisation complète, équipe et API sont actifs. Aucun abonnement ni paiement n’est nécessaire.</p>
+                </section> : <section className="rounded-2xl border border-emerald-700/30 bg-emerald-50 p-6">
                     <h2 className="text-lg font-semibold">Passer au plan Pro</h2>
                     <p className="mt-1 text-3xl font-semibold">
                         {Number(proPrice).toLocaleString('fr-FR')} FCFA
@@ -104,7 +108,7 @@ export default function SubscriptionIndex({ usage, plans, provider, transactions
                             {usage.is_paid ? 'Deja abonne Pro' : 'Payer maintenant'}
                         </button>
                     </form>
-                </section>
+                </section>}
             </div>
 
             <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">

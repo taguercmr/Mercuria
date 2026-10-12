@@ -42,7 +42,7 @@ class TeamController extends Controller
                 ->where('expires_at', '>', now())
                 ->latest()
                 ->get(['id', 'email', 'role', 'expires_at', 'created_at']),
-            'usage' => $quotas->usageSummary($tenant),
+            'usage' => $quotas->usageSummary($tenant, $request->user()),
             'canManage' => in_array($request->user()->tenantRole(), ['owner'], true)
                 || $request->user()->is_platform_admin,
             'roles' => [
@@ -65,7 +65,7 @@ class TeamController extends Controller
         ]);
 
         try {
-            $quotas->ensureTeamSlot($tenant);
+            $quotas->ensureTeamSlot($tenant, $request->user());
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }

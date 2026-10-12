@@ -21,7 +21,7 @@ class DeveloperController extends Controller
         $baseUrl = url('/api/v1');
 
         return Inertia::render('App/Developers/Index', [
-            'usage' => $quotas->usageSummary($tenant),
+            'usage' => $quotas->usageSummary($tenant, $request->user()),
             'apiKeys' => ApiKey::query()
                 ->where('tenant_id', $tenant->id)
                 ->latest()
@@ -135,7 +135,7 @@ class DeveloperController extends Controller
         abort_unless($tenant, 403);
 
         try {
-            $quotas->ensureApiAccess($tenant);
+            $quotas->ensureApiAccess($tenant, $request->user());
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }

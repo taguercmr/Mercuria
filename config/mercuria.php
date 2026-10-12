@@ -16,8 +16,10 @@ return [
         'free' => [
             'code' => 'free',
             'name' => 'Gratuit',
-            'documents_per_month' => (int) env('MERCURIA_FREE_DOCS_PER_MONTH', 10),
-            'clients_limit' => (int) env('MERCURIA_FREE_CLIENTS_LIMIT', 25),
+            'documents_per_month' => (int) env('MERCURIA_FREE_DOCS_PER_MONTH', 3),
+            'clients_limit' => (int) env('MERCURIA_FREE_CLIENTS_LIMIT', 2),
+            'email_sending' => false,
+            'advanced_customization' => false,
             'api_access' => false,
             'team_members' => 1,
         ],
@@ -27,6 +29,8 @@ return [
             'documents_per_month' => null, // unlimited
             'clients_limit' => null,
             'api_access' => true,
+            'email_sending' => true,
+            'advanced_customization' => true,
             'team_members' => (int) env('MERCURIA_PRO_TEAM_MEMBERS', 10),
             'price_monthly_xaf' => (int) env('MERCURIA_PRO_PRICE_MONTHLY', 9900),
             'price_yearly_xaf' => (int) env('MERCURIA_PRO_PRICE_YEARLY', 99000),

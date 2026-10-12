@@ -167,9 +167,9 @@ export default function GuideIndex({ mercurialeYear, mercurialeSource, plans }: 
                             lignes, totaux et signature selon votre personnalisation.
                         </p>
                         <Callout tone="success">
-                            Oui — devis, proforma, BC et facture se téléchargent tous en PDF.
-                            Vous pouvez aussi les <strong>envoyer par e-mail</strong> (PDF en
-                            pièce jointe) depuis le même écran.
+                            Oui — devis, proforma, BC et facture se téléchargent tous en PDF,
+                            y compris avec le plan Gratuit. L’<strong>envoi par e-mail</strong>{' '}
+                            (PDF en pièce jointe) est inclus avec le plan Pro.
                         </Callout>
 
                         <h4 className="mt-4 text-sm font-semibold text-slate-900">

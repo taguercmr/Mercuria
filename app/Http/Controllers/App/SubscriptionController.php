@@ -22,7 +22,7 @@ class SubscriptionController extends Controller
         abort_unless($tenant, 403);
 
         return Inertia::render('App/Subscription/Index', [
-            'usage' => $quotas->usageSummary($tenant),
+            'usage' => $quotas->usageSummary($tenant, $request->user()),
             'plans' => [
                 'free' => config('mercuria.plans.free'),
                 'pro' => Plan::query()->where('code', 'pro')->first()
@@ -43,6 +43,10 @@ class SubscriptionController extends Controller
     ): RedirectResponse|\Symfony\Component\HttpFoundation\Response {
         $tenant = $request->user()->currentTenant;
         abort_unless($tenant, 403);
+
+        if ($request->user()->is_platform_admin) {
+            return back()->with('success', 'Votre compte administrateur dispose déjà de toutes les fonctionnalités.');
+        }
 
         $data = $request->validate([
             'billing_cycle' => ['required', 'in:monthly,yearly'],

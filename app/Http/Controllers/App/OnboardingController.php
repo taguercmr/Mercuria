@@ -101,7 +101,7 @@ class OnboardingController extends Controller
             'steps' => $steps,
             'completed' => $completed,
             'tenant' => $tenant->only(['name', 'plan']),
-            'usage' => app(PlanQuotaService::class)->usageSummary($tenant),
+            'usage' => app(PlanQuotaService::class)->usageSummary($tenant, $request->user()),
         ]);
     }
 
